@@ -406,6 +406,24 @@ EOL
     echo "Zsh setup complete! Please restart your terminal."
 }
 
+function remove_zsh() {
+uninstall_oh_my_zsh 
+# Remove configuration files
+rm -rf ~/.zshrc
+rm -rf ~/.zsh*
+rm -rf ~/.oh-my-zsh
+rm -rf ~/.cache/zsh
+rm -rf ~/.local/share/zsh
+
+# Revert to default shell
+chsh -s $(which bash)
+
+# Remove Zsh packages
+sudo pacman -Rns zsh zsh-completions zsh-autosuggestions zsh-syntax-highlighting
+
+echo "Zsh and related configurations have been removed."
+}
+
 # User environment setup function
 function usrsetup() {
 
