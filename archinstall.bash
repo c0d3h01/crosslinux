@@ -97,34 +97,42 @@ function setup_filesystems() {
     -m dup \
     "${CONFIG[ROOT_PART]}"
 
-    # Mount and create subvolumes
+    # Mount root partition
     mount "${CONFIG[ROOT_PART]}" /mnt
 
-    # Optimize subvolume layout
-    pushd /mnt >/dev/null
-    local subvolumes=("@" "@home" "@root" "@srv" "@cache" "@log" "@tmp")
+    # Define subvolumes
+    local subvolumes=("@" "@home" "@root" "@srv" "@cache" "@log" "@tmp" "@snapshots")
 
+    # Change to mount point
+    pushd /mnt >/dev/null
+
+    # Create subvolumes with loops
     for subvol in "${subvolumes[@]}"; do
         btrfs subvolume create "$subvol"
     done
-    
+
+    # Return to previous directory
     popd >/dev/null
+
+    # Unmount root partition
     umount /mnt
 
     # Mount
     mount -o "noatime,compress=zstd,discard=async,ssd,space_cache=v2,subvol=@" "${CONFIG[ROOT_PART]}" /mnt
 
-    # Create necessary mount points
-    mkdir -p /mnt/{home,root,srv,var/{cache,log},tmp,boot/efi}
+    # Create necessary mount points dirs
+    mkdir -p /mnt/{home,root,srv,var/{cache,log},tmp,boot/efi,snapshots}
 
     # Mount subvolumes
     mount -o "noatime,compress=zstd,discard=async,ssd,space_cache=v2,subvol=@home" "${CONFIG[ROOT_PART]}" /mnt/home
     mount -o "noatime,compress=zstd,discard=async,ssd,space_cache=v2,subvol=@root" "${CONFIG[ROOT_PART]}" /mnt/root
     mount -o "noatime,compress=zstd,discard=async,ssd,space_cache=v2,subvol=@srv" "${CONFIG[ROOT_PART]}" /mnt/srv
-
+    mount -o "noatime,compress=zstd,discard=async,ssd,space_cache=v2,subvol=@snapshots" "${CONFIG[ROOT_PART]}" /mnt/snapshots
     mount -o "noatime,compress=zstd,discard=async,ssd,space_cache=v2,subvol=@cache" "${CONFIG[ROOT_PART]}" /mnt/var/cache
     mount -o "noatime,compress=zstd,discard=async,ssd,space_cache=v2,subvol=@log" "${CONFIG[ROOT_PART]}" /mnt/var/log
     mount -o "noatime,compress=zstd,discard=async,ssd,space_cache=v2,subvol=@tmp" "${CONFIG[ROOT_PART]}" /mnt/tmp
+
+    # Mount EFI partition
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
 }
 
