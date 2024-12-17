@@ -6,6 +6,7 @@
 # shellcheck disable=SC1009
 # shellcehck disable=SC1072
 # shellcheck disable=SC1073
+# shellcheck disable=SC2046
 #
 # ==============================================================================
 # Automated Arch Linux Installation Personal Setup Script
@@ -322,6 +323,89 @@ function archinstall() {
     success "Installation completed! You can now reboot your system."
 }
 
+function setup_zsh() {
+    # Install required packages
+    echo "Installing required packages..."
+    sudo pacman -S --noconfirm zsh zsh-completions zsh-autosuggestions zsh-syntax-highlighting fzf tldr
+
+    # Install Oh My Zsh
+    echo "Installing Oh My Zsh..."
+    if [ ! -d ~/.oh-my-zsh ]; then
+        sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+    fi
+
+    # Create comprehensive .zshrc
+    cat > ~/.zshrc << 'EOL'
+# Path to your oh-my-zsh installation
+export ZSH="$HOME/.oh-my-zsh"
+
+# Set theme
+ZSH_THEME="robbyrussell"
+
+# Plugins
+plugins=(
+  git
+  archlinux
+  zsh-autosuggestions
+  zsh-syntax-highlighting
+  sudo
+  colorize
+  colored-man-pages
+)
+
+# Oh My Zsh source
+source $ZSH/oh-my-zsh.sh
+
+# Autosuggestions configuration
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=245"
+
+# Additional useful aliases
+alias update='sudo pacman -Syu'
+alias install='sudo pacman -S'
+alias remove='sudo pacman -Rns'
+alias cleanup='sudo pacman -Rns $(pacman -Qtdq)'
+
+# Enhanced history
+HISTSIZE=10000
+SAVEHIST=10000
+setopt SHARE_HISTORY
+setopt HIST_IGNORE_DUPS
+setopt HIST_IGNORE_ALL_DUPS
+setopt HIST_IGNORE_SPACE
+
+# Auto completion
+autoload -Uz compinit
+compinit
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
+zstyle ':completion:*' menu select
+
+# Optional: Add fzf if installed
+[ -f /usr/share/fzf/key-bindings.zsh ] && source /usr/share/fzf/key-bindings.zsh
+[ -f /usr/share/fzf/completion.zsh ] && source /usr/share/fzf/completion.zsh
+EOL
+
+    # Install additional Oh My Zsh plugins
+    echo "Installing additional Oh My Zsh plugins..."
+    ZSH_CUSTOM=~/.oh-my-zsh/custom
+    if [ ! -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ]; then
+        git clone https://github.com/zsh-users/zsh-autosuggestions.git "$ZSH_CUSTOM/plugins/zsh-autosuggestions"
+    fi
+
+    if [ ! -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]; then
+        git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting"
+    fi
+
+    # Change default shell to Zsh
+    echo "Changing default shell to Zsh..."
+    chsh -s $(which zsh)
+
+    # Source the new configuration
+    echo "Sourcing new Zsh configuration..."
+    source ~/.zshrc
+    # sudo chown -R harsh:harsh android-sdk
+    echo "Zsh setup complete! Please restart your terminal."
+}
+
 # User environment setup function
 function usrsetup() {
 
@@ -339,31 +423,10 @@ fi
 
     # Install user applications via yay
     yay -S --noconfirm \
-        telegram-desktop-bin flutter-bin \
+        telegram-desktop-bin \
         vesktop-bin youtube-music-bin \
         zoom visual-studio-code-bin wine \
         gnome-shell-extension-pop-shell-git
-
-    # Set up variables
-    # Bash configuration
-sed -i '$a\
-\
-alias pi="sudo pacman -S"\
-alias po="sudo pacman -Rns"\
-alias update="sudo pacman -Syyu --needed --noconfirm && yay --noconfirm"\
-alias clean="yay -Scc --noconfirm"\
-alias la="ls -la"\
-\
-# Use bash-completion, if available\
-[[ $PS1 && -f /usr/share/bash-completion/bash_completion ]] &&\
-    . /usr/share/bash-completion/bash_completion\
-\
-export CHROME_EXECUTABLE=$(which brave)\
-export PATH=$PATH:/opt/platform-tools:/opt/android-ndk' ~/.bashrc
-
-echo "Configuration updated for shell."
-
-    # sudo chown -R harsh:harsh android-sdk
 }
 
 # Main execution function
