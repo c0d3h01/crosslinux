@@ -102,24 +102,29 @@ function setup_filesystems() {
 
     # Optimize subvolume layout
     pushd /mnt >/dev/null
-    local subvolumes=("@" "@home" "@cache" "@tmp" "@log")
+    local subvolumes=("@" "@home" "@root" "@srv" "@cache" "@log" "@tmp")
+
     for subvol in "${subvolumes[@]}"; do
         btrfs subvolume create "$subvol"
     done
+    
     popd >/dev/null
     umount /mnt
 
     # Mount
-    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,subvol=@" "${CONFIG[ROOT_PART]}" /mnt
+    mount -o "noatime,compress=zstd,discard=async,ssd,space_cache=v2,subvol=@" "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary mount points
-    mkdir -p /mnt/{home,var/{cache,log},tmp,boot/efi}
+    mkdir -p /mnt/{home,root,srv,var/{cache,log},tmp,boot/efi}
 
     # Mount subvolumes
-    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,subvol=@home" "${CONFIG[ROOT_PART]}" /mnt/home
-    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,subvol=@cache" "${CONFIG[ROOT_PART]}" /mnt/var/cache
-    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,subvol=@log" "${CONFIG[ROOT_PART]}" /mnt/var/log
-    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,subvol=@tmp" "${CONFIG[ROOT_PART]}" /mnt/tmp
+    mount -o "noatime,compress=zstd,discard=async,ssd,space_cache=v2,subvol=@home" "${CONFIG[ROOT_PART]}" /mnt/home
+    mount -o "noatime,compress=zstd,discard=async,ssd,space_cache=v2,subvol=@root" "${CONFIG[ROOT_PART]}" /mnt/root
+    mount -o "noatime,compress=zstd,discard=async,ssd,space_cache=v2,subvol=@srv" "${CONFIG[ROOT_PART]}" /mnt/srv
+
+    mount -o "noatime,compress=zstd,discard=async,ssd,space_cache=v2,subvol=@cache" "${CONFIG[ROOT_PART]}" /mnt/var/cache
+    mount -o "noatime,compress=zstd,discard=async,ssd,space_cache=v2,subvol=@log" "${CONFIG[ROOT_PART]}" /mnt/var/log
+    mount -o "noatime,compress=zstd,discard=async,ssd,space_cache=v2,subvol=@tmp" "${CONFIG[ROOT_PART]}" /mnt/tmp
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
 }
 
@@ -153,7 +158,7 @@ function install_base_system() {
         xorg-server xorg-xinit
 
         # Essential System Utilities
-        networkmanager grub efibootmgr earlyoom
+        networkmanager grub efibootmgr nohang
         btrfs-progs bash-completion noto-fonts
         htop vim fastfetch nodejs npm thermald
         git xclip laptop-detect kitty reflector
@@ -236,6 +241,28 @@ function apply_optimizations() {
 
     # Refresh package databases
     pacman -Syy --noconfirm
+
+    tee "/usr/lib/systemd/zram-generator.conf" <<'ZRAM'
+[zram0]
+compression-algorithm = zstd lz4 (type=huge)
+zram-size = ram
+swap-priority = 100
+fs-type = swap
+ZRAM
+
+    tee "/usr/lib/udev/rules.d/30-zram.rules" <<'ZRULE'
+TEST!="/dev/zram0", GOTO="zram_end"
+
+# Since ZRAM stores all pages in compressed form in RAM, we should prefer
+# preempting anonymous pages more than a page (file) cache.  Preempting file
+# pages may not be desirable because a process may want to access a file at any
+# time, whereas if it is preempted, it will cause an additional read cycle from
+# the disk.
+SYSCTL{vm.swappiness}="150"
+
+LABEL="zram_end"
+ZRULE
+
 EOF
 }
 
@@ -263,8 +290,7 @@ function configure_services() {
     systemctl enable NetworkManager
     systemctl enable bluetooth.service
     systemctl enable fstrim.timer
-    # systemctl enable ananicy-cpp
-    systemctl enable earlyoom
+    systemctl enable nohang
     systemctl enable thermald
     systemctl enable ufw
     ufw allow 1714:1764/udp
