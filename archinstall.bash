@@ -166,7 +166,7 @@ function install_base_system() {
         xorg-server xorg-xinit
 
         # Essential System Utilities
-        networkmanager grub efibootmgr nohang
+        networkmanager grub efibootmgr
         btrfs-progs bash-completion noto-fonts
         htop vim fastfetch nodejs npm thermald
         git xclip laptop-detect kitty reflector
@@ -298,7 +298,6 @@ function configure_services() {
     systemctl enable NetworkManager
     systemctl enable bluetooth.service
     systemctl enable fstrim.timer
-    systemctl enable nohang
     systemctl enable thermald
     systemctl enable ufw
     ufw allow 1714:1764/udp
