@@ -12,7 +12,7 @@
 # Automated Arch Linux Installation Personal Setup Script
 # ==============================================================================
 
-set -euxo pipefail
+set -euo pipefail
 
 # Color codes
 RED='\033[0;31m'
@@ -323,7 +323,7 @@ function archinstall() {
     success "Installation completed! You can now reboot your system."
 }
 
-function setup_zsh() {
+function install_zsh() {
     # Install required packages
     echo "Installing required packages..."
     sudo pacman -S --noconfirm zsh zsh-completions zsh-autosuggestions zsh-syntax-highlighting fzf tldr
@@ -396,17 +396,16 @@ EOL
     fi
 
     # Change default shell to Zsh
-    echo "Changing default shell to Zsh..."
+    echo "Now do manaul setup ->..."
+    echo "
     chsh -s $(which zsh)
-
-    # Source the new configuration
-    echo "Sourcing new Zsh configuration..."
     source ~/.zshrc
+    Please restart your session after steps." 
     # sudo chown -R harsh:harsh android-sdk
-    echo "Zsh setup complete! Please restart your terminal."
 }
 
 function remove_zsh() {
+
 uninstall_oh_my_zsh 
 # Remove configuration files
 rm -rf ~/.zshrc
@@ -453,12 +452,23 @@ function main() {
     "--install" | "-i")
         archinstall
         ;;
+
     "--setup" | "-s")
         usrsetup
         ;;
+
+    "--zsh-i" | "-iz")
+        install_zsh
+        ;;
+
+    "--zsh-r" | "-rz")
+        remove_zsh
+        ;;
+
     "--help" | "-h")
         show_help
         ;;
+
     "")
         echo "Error: No arguments provided"
         show_help
@@ -478,8 +488,10 @@ function show_help() {
 Usage: $(basename "$0") [OPTION]
 
 Options:
-    -i, --install
-    -s, --setup
+    -i, --install (Arch install)
+    -s, --setup (Arch usr setup)
+    -iz, --zsh-i (Install ZSH)
+    -rz, --zsh-r (Remove ZSH)
     -h, --help
 EOF
 }
