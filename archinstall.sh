@@ -279,15 +279,9 @@ EOF
 function desktop_install() {
     arch-chroot /mnt /bin/bash <<'EOF'
     pacman -S --needed --noconfirm \
-    gnome gnome-tweaks gnome-terminal
-
-    # Remove gnome bloat's & enable gdm
-    pacman -Rns --noconfirm \
-    gnome-tour gnome-user-docs \
-    gnome-weather gnome-music \
-    epiphany yelp malcontent \
-    gnome-software
-    systemctl enable gdm
+    xfce4 xfce4-goodies network-manager-applet \
+    lightdm lightdm-gtk-greeter
+    systemctl enable lightdm
 EOF
 }
 
