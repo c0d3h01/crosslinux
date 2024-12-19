@@ -279,9 +279,9 @@ EOF
 function desktop_install() {
     arch-chroot /mnt /bin/bash <<'EOF'
     pacman -S --needed --noconfirm \
-    xfce4 xfce4-goodies network-manager-applet \
-    lightdm lightdm-gtk-greeter
-    systemctl enable lightdm
+    gnome gnome-tweaks gnome-terminal
+    
+    systemctl enable gdm
 EOF
 }
 
