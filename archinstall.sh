@@ -281,6 +281,14 @@ function desktop_install() {
     pacman -S --needed --noconfirm \
     gnome gnome-tweaks gnome-terminal
     
+    pacman -Rns --noconfirm \
+    gnome-tour gnome-user-docs \
+    gnome-weather gnome-music \
+    epiphany yelp malcontent \
+    gnome-software gnome-text-editor \
+    gnome-contacts gnome-calendar \
+    gnome-shell-extensions 
+    
     systemctl enable gdm
 EOF
 }
