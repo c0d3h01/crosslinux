@@ -179,7 +179,7 @@ function install_base_system() {
         pipewire pipewire-pulse pipewire-alsa pipewire-jack wireplumber
         
         # Daily Usage Needs
-        zed kdeconnect rhythmbox libreoffice-fresh
+        macro kdeconnect rhythmbox libreoffice-fresh
         python python-pip python-scikit-learn
         python-numpy python-pandas
         python-scipy python-matplotlib
@@ -279,17 +279,22 @@ EOF
 function desktop_install() {
     arch-chroot /mnt /bin/bash <<'EOF'
     pacman -S --needed --noconfirm \
-    gnome gnome-tweaks gnome-terminal
+    xfce xfce4-goodies network-manager-applet \
+    lightdm lightdm-gtk-greeter
+
+    systemctl enable lightdm
     
-    pacman -Rns --noconfirm \
-    gnome-tour gnome-user-docs \
-    gnome-weather gnome-music \
-    epiphany yelp malcontent \
-    gnome-software gnome-text-editor \
-    gnome-contacts gnome-calendar \
-    gnome-shell-extensions 
+    # gnome gnome-tweaks gnome-terminal
     
-    systemctl enable gdm
+    # pacman -Rns --noconfirm \
+    # gnome-tour gnome-user-docs \
+    # gnome-weather gnome-music \
+    # epiphany yelp malcontent \
+    # gnome-software gnome-text-editor \
+    # gnome-contacts gnome-calendar \
+    # gnome-shell-extensions
+    
+    # systemctl enable gdm
 EOF
 }
 
