@@ -168,8 +168,8 @@ function install_base_system() {
 
         # Essential System Utilities
         networkmanager grub efibootmgr kitty
-        btrfs-progs bash-completion noto-fonts
-        htop neovim fastfetch neofetch nodejs npm thermald tlp tlp-rdw
+        btrfs-progs noto-fonts tlp tlp-rdw
+        htop neovim fastfetch neofetch nodejs npm thermald
         git xclip laptop-detect kitty reflector earlyoom
         flatpak htop glances ufw-extras timeshift nano
         ninja gcc gdb cmake clang rsync zram-generator
@@ -179,7 +179,7 @@ function install_base_system() {
         pipewire pipewire-pulse pipewire-alsa pipewire-jack wireplumber
         
         # Daily Usage Needs
-        macro kdeconnect rhythmbox libreoffice-fresh
+        kdeconnect rhythmbox libreoffice-fresh
         python python-pip python-scikit-learn
         python-numpy python-pandas
         python-scipy python-matplotlib
@@ -241,8 +241,6 @@ function apply_optimizations() {
     info "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<'EOF'
 
-    reflector --country India --age 6 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
-
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
@@ -279,7 +277,7 @@ EOF
 function desktop_install() {
     arch-chroot /mnt /bin/bash <<'EOF'
     pacman -S --needed --noconfirm \
-    xfce xfce4-goodies network-manager-applet \
+    xfce4 xfce4-goodies network-manager-applet \
     lightdm lightdm-gtk-greeter
 
     systemctl enable lightdm
@@ -315,7 +313,6 @@ function configure_services() {
     systemctl enable ufw
     ufw allow 1714:1764/udp
     ufw allow 1714:1764/tcp
-    ufw reload
 EOF
 }
 
@@ -394,10 +391,6 @@ zstyle ':completion:*' menu select
 # Optional: Add fzf if installed
 [ -f /usr/share/fzf/key-bindings.zsh ] && source /usr/share/fzf/key-bindings.zsh
 [ -f /usr/share/fzf/completion.zsh ] && source /usr/share/fzf/completion.zsh
-
-if [ -f /usr/share/bash-completion/bash_completion ]; then
-    . /usr/share/bash-completion/bash_completion
-fi
 EOL
 
     # Install additional Oh My Zsh plugins
@@ -458,8 +451,7 @@ fi
     yay -S --noconfirm \
         telegram-desktop-bin \
         vesktop-bin youtube-music-bin \
-        zoom visual-studio-code-bin wine \
-        gnome-shell-extension-pop-shell-git
+        zoom visual-studio-code-bin wine
 }
 
 # Main execution function
