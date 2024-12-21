@@ -40,8 +40,8 @@ function init_config() {
 
     CONFIG=(
         [DRIVE]="/dev/nvme0n1"
-        [HOSTNAME]="archlinux"
-        [USERNAME]="harsh"
+        [HOSTNAME]="world-is-yours"
+        [USERNAME]="harshal"
         [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_IN.UTF-8"
@@ -157,7 +157,7 @@ function install_base_system() {
         base base-devel
         linux-firmware sof-firmware
         linux linux-headers
-        linux-lts linux-lts-headers
+        linux-zen linux-zen-headers
 
         # CPU & GPU Drivers
         amd-ucode mesa-vdpau
@@ -167,11 +167,11 @@ function install_base_system() {
         xorg-server xorg-xinit
 
         # Essential System Utilities
-        networkmanager grub efibootmgr
+        networkmanager grub efibootmgr kitty
         btrfs-progs bash-completion noto-fonts
-        htop vim fastfetch nodejs npm thermald
-        git xclip laptop-detect kitty reflector
-        flatpak htop glances ufw-extras timeshift
+        htop neovim fastfetch neofetch nodejs npm thermald tlp tlp-rdw
+        git xclip laptop-detect kitty reflector earlyoom
+        flatpak htop glances ufw-extras timeshift nano
         ninja gcc gdb cmake clang rsync zram-generator
 
         # Multimedia & Bluetooth
@@ -306,7 +306,12 @@ function configure_services() {
     systemctl enable NetworkManager
     systemctl enable bluetooth.service
     systemctl enable fstrim.timer
+    systemctl enable tlp.service
+    systemctl enable NetworkManager-dispatcher.service
+    systemctl mask systemd-rfkill.service systemd-rfkill.socket
     systemctl enable thermald
+    thermald --adaptive
+    systemctl enable earlyoom
     systemctl enable ufw
     ufw allow 1714:1764/udp
     ufw allow 1714:1764/tcp
@@ -389,6 +394,10 @@ zstyle ':completion:*' menu select
 # Optional: Add fzf if installed
 [ -f /usr/share/fzf/key-bindings.zsh ] && source /usr/share/fzf/key-bindings.zsh
 [ -f /usr/share/fzf/completion.zsh ] && source /usr/share/fzf/completion.zsh
+
+if [ -f /usr/share/bash-completion/bash_completion ]; then
+    . /usr/share/bash-completion/bash_completion
+fi
 EOL
 
     # Install additional Oh My Zsh plugins
