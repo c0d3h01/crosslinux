@@ -175,7 +175,7 @@ function install_base_system() {
         ninja gcc gdb cmake clang rsync zram-generator
 
         # Multimedia & Bluetooth
-        bluez bluez-utils
+        bluez bluez-utils pavucontrol
         pipewire pipewire-pulse pipewire-alsa pipewire-jack wireplumber
         
         # Daily Usage Needs
@@ -183,6 +183,7 @@ function install_base_system() {
         python python-pip python-scikit-learn
         python-numpy python-pandas
         python-scipy python-matplotlib
+        php firefox nmap ark
     )
     pacstrap -K /mnt --needed "${base_packages[@]}"
 }
