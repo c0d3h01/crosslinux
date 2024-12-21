@@ -342,7 +342,7 @@ function install_zsh() {
 export ZSH="$HOME/.oh-my-zsh"
 
 # Set theme
-ZSH_THEME="robbyrussell"
+ZSH_THEME="bira"
 
 # Plugins
 plugins=(
