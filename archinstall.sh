@@ -168,7 +168,7 @@ function install_base_system() {
 
         # Essential System Utilities
         networkmanager grub efibootmgr kitty
-        btrfs-progs noto-fonts tlp tlp-rdw
+        btrfs-progs noto-fonts tlp tlp-rdw pacutils
         htop neovim fastfetch neofetch nodejs npm thermald
         git xclip laptop-detect kitty reflector earlyoom
         flatpak htop glances ufw-extras timeshift nano
