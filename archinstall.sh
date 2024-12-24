@@ -145,8 +145,7 @@ function install_base_system() {
 
     # Pacman configure for arch-iso
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
-    sed -i 's/^#Color/Color/' /etc/pacman.conf
-    sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
+    sed -i '/^# Misc options/a DisableDownloadTimeout' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
     # Refresh package databases
@@ -157,33 +156,36 @@ function install_base_system() {
         base base-devel
         linux-firmware sof-firmware
         linux linux-headers
-        linux-zen linux-zen-headers
+        linux-lts linux-lts-headers
 
         # CPU & GPU Drivers
         amd-ucode mesa-vdpau
         libva-mesa-driver libva-utils mesa lib32-mesa
         vulkan-radeon lib32-vulkan-radeon vulkan-headers
-        xf86-video-amdgpu xf86-video-ati xf86-input-libinput
-        xorg-server xorg-xinit
+        xf86-video-amdgpu xf86-video-ati
+        xorg-server xorg-xinit xf86-input-libinput
 
         # Essential System Utilities
-        networkmanager grub efibootmgr kitty
-        btrfs-progs noto-fonts tlp tlp-rdw pacutils
-        htop neovim fastfetch neofetch nodejs npm thermald
-        git xclip laptop-detect kitty reflector earlyoom
-        flatpak htop glances ufw-extras timeshift nano
-        ninja gcc gdb cmake clang rsync zram-generator
+        networkmanager grub efibootmgr
+        btrfs-progs noto-fonts pacutils
+        tlp tlp-rdw earlyoom thermald git reflector
+        htop neovim fastfetch neofetch timeshift
+        xclip laptop-detect zram-generator
+        flatpak glances ufw-extras nano
 
         # Multimedia & Bluetooth
         bluez bluez-utils pavucontrol
-        pipewire pipewire-pulse pipewire-alsa pipewire-jack wireplumber
-        
-        # Daily Usage Needs
+        pipewire pipewire-pulse pipewire-alsa
+        pipewire-jack wireplumber
+
+        # Essential User Utilities
         kdeconnect rhythmbox libreoffice-fresh
+        kitty firefox ark
+
+        ninja gcc gdb cmake clang nodejs npm php nmap
         python python-pip python-scikit-learn
         python-numpy python-pandas
         python-scipy python-matplotlib
-        php firefox nmap ark
     )
     pacstrap -K /mnt --needed "${base_packages[@]}"
 }
@@ -241,7 +243,6 @@ EOF
 function apply_optimizations() {
     info "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<'EOF'
-
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
@@ -260,16 +261,24 @@ ZRAM
 
     tee "/usr/lib/udev/rules.d/30-zram.rules" <<'ZRULE'
 TEST!="/dev/zram0", GOTO="zram_end"
-
-# Since ZRAM stores all pages in compressed form in RAM, we should prefer
-# preempting anonymous pages more than a page (file) cache.  Preempting file
-# pages may not be desirable because a process may want to access a file at any
-# time, whereas if it is preempted, it will cause an additional read cycle from
-# the disk.
 SYSCTL{vm.swappiness}="150"
-
 LABEL="zram_end"
 ZRULE
+
+    tee "/etc/systemd/system/mirror-update.service" <<'REF'
+[Unit]
+Description=Update pacman mirrorlist
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/reflector --country India --age 6 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+REF
 
 EOF
 }
@@ -277,23 +286,18 @@ EOF
 # Desktop Environment GNOME
 function desktop_install() {
     arch-chroot /mnt /bin/bash <<'EOF'
-    pacman -S --needed --noconfirm \
-    xfce4 xfce4-goodies network-manager-applet \
-    lightdm lightdm-gtk-greeter
+    pacman -S --needed --noconfirm \    
+    gnome gnome-tweaks gnome-terminal
+    
+    pacman -Rns --noconfirm \
+    gnome-tour gnome-user-docs \
+    gnome-weather gnome-music \
+    epiphany yelp malcontent \
+    gnome-software gnome-text-editor \
+    gnome-contacts gnome-calendar \
+    gnome-shell-extensions
 
-    systemctl enable lightdm
-    
-    # gnome gnome-tweaks gnome-terminal
-    
-    # pacman -Rns --noconfirm \
-    # gnome-tour gnome-user-docs \
-    # gnome-weather gnome-music \
-    # epiphany yelp malcontent \
-    # gnome-software gnome-text-editor \
-    # gnome-contacts gnome-calendar \
-    # gnome-shell-extensions
-    
-    # systemctl enable gdm
+    systemctl enable gdm
 EOF
 }
 
@@ -305,6 +309,7 @@ function configure_services() {
     systemctl enable NetworkManager
     systemctl enable bluetooth.service
     systemctl enable fstrim.timer
+    systemctl enable mirror-update.service
     systemctl enable tlp.service
     systemctl enable NetworkManager-dispatcher.service
     systemctl mask systemd-rfkill.service systemd-rfkill.socket
@@ -406,16 +411,14 @@ EOL
     fi
 
     # Change default shell to Zsh
-    echo "Now do manaul setup ->..."
-    echo "
-    chsh -s $(which zsh)
-    source ~/.zshrc
-    Please restart your session after steps." 
+    echo "Manaul setup ->..."
+    echo ""
+    echo "chsh -s $(which zsh)"
+    echo "Please restart your session after steps." 
     # sudo chown -R harsh:harsh android-sdk
 }
 
 function remove_zsh() {
-
 uninstall_oh_my_zsh 
 # Remove configuration files
 rm -rf ~/.zshrc
