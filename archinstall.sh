@@ -254,6 +254,7 @@ zram-size = ram
 swap-priority = 100
 fs-type = swap
 ZRAM
+EOF
 }
 
 # Desktop Environment GNOME
