@@ -455,7 +455,9 @@ fi
     yay -S --noconfirm \
         telegram-desktop-bin \
         vesktop-bin youtube-music-bin \
-        zoom visual-studio-code-bin wine
+        zoom visual-studio-code-bin wine \
+        gnome-shell-extension-blur-my-shell \
+        gnome-shell-extension-dash-to-dock
 }
 
 # Main execution function
