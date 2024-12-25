@@ -40,8 +40,8 @@ function init_config() {
 
     CONFIG=(
         [DRIVE]="/dev/nvme0n1"
-        [HOSTNAME]="world-is-yours"
-        [USERNAME]="harshal"
+        [HOSTNAME]="world"
+        [USERNAME]="harsh"
         [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_IN.UTF-8"
@@ -102,7 +102,7 @@ function setup_filesystems() {
     mount "${CONFIG[ROOT_PART]}" /mnt
 
     # Define subvolumes
-    local subvolumes=("@" "@home" "@root" "@srv" "@cache" "@log" "@tmp" "@snapshots")
+    local subvolumes=("@" "@home" "@srv" "@cache" "@log" "@tmp")
 
     # Change to mount point
     pushd /mnt >/dev/null
@@ -119,19 +119,17 @@ function setup_filesystems() {
     umount /mnt
 
     # Mount
-    mount -o "noatime,compress=zstd,discard=async,ssd,space_cache=v2,subvol=@" "${CONFIG[ROOT_PART]}" /mnt
+    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,autodefrag,subvol=@" "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary mount points dirs
-    mkdir -p /mnt/{home,root,srv,var/{cache,log},tmp,boot/efi,snapshots}
+    mkdir -p /mnt/{home,srv,var/{cache,log},tmp,boot/efi}
 
     # Mount subvolumes
-    mount -o "noatime,compress=zstd,discard=async,ssd,space_cache=v2,subvol=@home" "${CONFIG[ROOT_PART]}" /mnt/home
-    mount -o "noatime,compress=zstd,discard=async,ssd,space_cache=v2,subvol=@root" "${CONFIG[ROOT_PART]}" /mnt/root
-    mount -o "noatime,compress=zstd,discard=async,ssd,space_cache=v2,subvol=@srv" "${CONFIG[ROOT_PART]}" /mnt/srv
-    mount -o "noatime,compress=zstd,discard=async,ssd,space_cache=v2,subvol=@snapshots" "${CONFIG[ROOT_PART]}" /mnt/snapshots
-    mount -o "noatime,compress=zstd,discard=async,ssd,space_cache=v2,subvol=@cache" "${CONFIG[ROOT_PART]}" /mnt/var/cache
-    mount -o "noatime,compress=zstd,discard=async,ssd,space_cache=v2,subvol=@log" "${CONFIG[ROOT_PART]}" /mnt/var/log
-    mount -o "noatime,compress=zstd,discard=async,ssd,space_cache=v2,subvol=@tmp" "${CONFIG[ROOT_PART]}" /mnt/tmp
+    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,autodefrag,subvol=@home" "${CONFIG[ROOT_PART]}" /mnt/home
+    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,autodefrag,subvol=@srv" "${CONFIG[ROOT_PART]}" /mnt/srv
+    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,autodefrag,subvol=@cache" "${CONFIG[ROOT_PART]}" /mnt/var/cache
+    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,autodefrag,subvol=@log" "${CONFIG[ROOT_PART]}" /mnt/var/log
+    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,autodefrag,subvol=@tmp" "${CONFIG[ROOT_PART]}" /mnt/tmp
 
     # Mount EFI partition
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
@@ -159,28 +157,26 @@ function install_base_system() {
         linux-lts linux-lts-headers
 
         # CPU & GPU Drivers
-        amd-ucode mesa-vdpau
+        amd-ucode
         libva-mesa-driver libva-utils mesa lib32-mesa
         vulkan-radeon lib32-vulkan-radeon vulkan-headers
-        xf86-video-amdgpu xf86-video-ati
+        xf86-video-amdgpu
         xorg-server xorg-xinit xf86-input-libinput
 
         # Essential System Utilities
         networkmanager grub efibootmgr
         btrfs-progs noto-fonts pacutils
-        tlp tlp-rdw earlyoom thermald git reflector
-        htop neovim fastfetch neofetch timeshift
+        thermald git reflector
+        neovim fastfetch neofetch timeshift
         xclip laptop-detect zram-generator
         flatpak glances ufw-extras nano
 
         # Multimedia & Bluetooth
-        bluez bluez-utils pavucontrol
-        pipewire pipewire-pulse pipewire-alsa
-        pipewire-jack wireplumber
+        bluez bluez-utils
 
         # Essential User Utilities
         kdeconnect rhythmbox libreoffice-fresh
-        kitty firefox ark
+        kitty firefox
 
         ninja gcc gdb cmake clang nodejs npm php nmap
         python python-pip python-scikit-learn
@@ -227,7 +223,7 @@ HOST
     echo "root:${CONFIG[PASSWORD]}" | chpasswd
 
     # Create user
-    useradd -m -G wheel -s /bin/bash ${CONFIG[USERNAME]}
+    useradd -m -G wheel,audio,video,network,storage -s /bin/bash ${CONFIG[USERNAME]}
     echo "${CONFIG[USERNAME]}:${CONFIG[PASSWORD]}" | chpasswd
     
     # Configure sudo
@@ -253,34 +249,11 @@ function apply_optimizations() {
 
     tee "/usr/lib/systemd/zram-generator.conf" <<'ZRAM'
 [zram0]
-compression-algorithm = zstd lz4 (type=huge)
+compression-algorithm = zstd
 zram-size = ram
 swap-priority = 100
 fs-type = swap
 ZRAM
-
-    tee "/usr/lib/udev/rules.d/30-zram.rules" <<'ZRULE'
-TEST!="/dev/zram0", GOTO="zram_end"
-SYSCTL{vm.swappiness}="150"
-LABEL="zram_end"
-ZRULE
-
-    tee "/etc/systemd/system/mirror-update.service" <<'REF'
-[Unit]
-Description=Update pacman mirrorlist
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/reflector --country India --age 6 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
-RemainAfterExit=yes
-
-[Install]
-WantedBy=multi-user.target
-REF
-
-EOF
 }
 
 # Desktop Environment GNOME
@@ -293,7 +266,7 @@ function desktop_install() {
     gnome-tour gnome-user-docs \
     gnome-weather gnome-music \
     epiphany yelp malcontent \
-    gnome-software gnome-text-editor \
+    gnome-software \
     gnome-contacts gnome-calendar \
     gnome-shell-extensions
 
@@ -309,13 +282,7 @@ function configure_services() {
     systemctl enable NetworkManager
     systemctl enable bluetooth.service
     systemctl enable fstrim.timer
-    systemctl enable mirror-update.service
-    systemctl enable tlp.service
-    systemctl enable NetworkManager-dispatcher.service
-    systemctl mask systemd-rfkill.service systemd-rfkill.socket
     systemctl enable thermald
-    thermald --adaptive
-    systemctl enable earlyoom
     systemctl enable ufw
     ufw allow 1714:1764/udp
     ufw allow 1714:1764/tcp
@@ -456,7 +423,6 @@ fi
         telegram-desktop-bin \
         vesktop-bin youtube-music-bin \
         zoom visual-studio-code-bin wine \
-        gnome-shell-extension-blur-my-shell \
         gnome-shell-extension-dash-to-dock
 }
 
