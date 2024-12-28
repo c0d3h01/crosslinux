@@ -102,7 +102,7 @@ function setup_filesystems() {
     mount "${CONFIG[ROOT_PART]}" /mnt
 
     # Define subvolumes
-    local subvolumes=("@" "@root" "@home" "@srv" "@snapshots" @cache" "@log" "@tmp")
+    local subvolumes=("@" "@root" "@home" "@srv" "@snapshots" "@cache" "@log" "@tmp")
 
     # Change to mount point
     pushd /mnt >/dev/null
