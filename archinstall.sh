@@ -122,11 +122,13 @@ function setup_filesystems() {
     mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,autodefrag,subvol=@" "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary mount points dirs
-    mkdir -p /mnt/{home,srv,var/{cache,log},tmp,boot/efi}
+    mkdir -p /mnt/{root,home,srv,snapshots,var/{cache,log},tmp,boot/efi}
 
     # Mount subvolumes
+    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,autodefrag,subvol=@root" "${CONFIG[ROOT_PART]}" /mnt/root
     mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,autodefrag,subvol=@home" "${CONFIG[ROOT_PART]}" /mnt/home
     mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,autodefrag,subvol=@srv" "${CONFIG[ROOT_PART]}" /mnt/srv
+    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,autodefrag,subvol=@snapshots" "${CONFIG[ROOT_PART]}" /mnt/snapshots
     mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,autodefrag,subvol=@cache" "${CONFIG[ROOT_PART]}" /mnt/var/cache
     mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,autodefrag,subvol=@log" "${CONFIG[ROOT_PART]}" /mnt/var/log
     mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,autodefrag,subvol=@tmp" "${CONFIG[ROOT_PART]}" /mnt/tmp
