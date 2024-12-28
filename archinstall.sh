@@ -157,10 +157,9 @@ function install_base_system() {
         linux-lts linux-lts-headers
 
         # CPU & GPU Drivers
-        amd-ucode
+        amd-ucode xf86-video-amdgpu
         libva-mesa-driver libva-utils mesa lib32-mesa
         vulkan-radeon lib32-vulkan-radeon vulkan-headers
-        xf86-video-amdgpu
         xorg-server xorg-xinit xf86-input-libinput
 
         # Essential System Utilities
@@ -239,6 +238,39 @@ EOF
 function apply_optimizations() {
     info "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<'EOF'
+# Selects the optimal scheduler for each drive type (HDD, SSD, NVMe)
+    tee "/usr/lib/udev/rules.d/60-ioschedulers.rules" <<'IOSCHED'
+# HDD
+ACTION=="add|change", KERNEL=="sd[a-z]*", ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="bfq"
+
+# SSD
+ACTION=="add|change", KERNEL=="sd[a-z]*|mmcblk[0-9]*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="mq-deadline"
+
+# NVMe SSD
+ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="none"
+IOSCHED
+
+# Sets SATA and IDE HDDs to maximum performance
+    tee "/usr/lib/udev/rules.d/69-hdparm.rules" <<'HDPARM'
+ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="1", \
+    RUN+="/usr/bin/hdparm -B 254 -S 0 /dev/%k"
+HDPARM
+
+    tee "/usr/lib/systemd/zram-generator.conf" <<'ZCONF'
+[zram0] 
+compression-algorithm = zstd lz4 (type=huge)
+zram-size = ram
+swap-priority = 100
+fs-type = swap
+ZCONF
+
+# Sets ZRAM swappiness to a more aggressive value so cache is more likely to swap to ZRAM
+    tee "/usr/lib/udev/rules.d/30-zram.rules" <<'ZRULES'
+TEST!="/dev/zram0", GOTO="zram_end"
+SYSCTL{vm.swappiness}="150"
+LABEL="zram_end"
+ZRULES
+
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
@@ -247,13 +279,6 @@ function apply_optimizations() {
     # Refresh package databases
     pacman -Syy --noconfirm
 
-    tee "/usr/lib/systemd/zram-generator.conf" <<'ZRAM'
-[zram0]
-compression-algorithm = zstd
-zram-size = ram
-swap-priority = 100
-fs-type = swap
-ZRAM
 EOF
 }
 
