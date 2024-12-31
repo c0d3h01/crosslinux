@@ -40,8 +40,8 @@ function init_config() {
 
     CONFIG=(
         [DRIVE]="/dev/nvme0n1"
-        [HOSTNAME]="nulldev"
-        [USERNAME]="harshal"
+        [HOSTNAME]="archlinux"
+        [USERNAME]="c0d3h01"
         [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_IN.UTF-8"
@@ -420,7 +420,7 @@ HOST
     # Configure sudo
     sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 
-    grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
+    grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=arch-GRUB
     grub-mkconfig -o /boot/grub/grub.cfg
     mkinitcpio -P
 EOF
@@ -448,15 +448,6 @@ ZCONF
 EOF
 }
 
-# Desktop Environment GNOME
-function desktop_install() {
-    arch-chroot /mnt /bin/bash <<EOF    
-    
-
-    systemctl enable gdm
-EOF
-}
-
 # Services configuration function
 function configure_services() {
     info "Configuring services..."
@@ -466,6 +457,7 @@ function configure_services() {
     systemctl enable bluetooth.service
     systemctl enable thermald
     systemctl enable ufw
+    systemctl enable gdm
     ufw allow 1714:1764/udp
     ufw allow 1714:1764/tcp
 EOF
