@@ -40,8 +40,8 @@ function init_config() {
 
     CONFIG=(
         [DRIVE]="/dev/nvme0n1"
-        [HOSTNAME]="world"
-        [USERNAME]="harsh"
+        [HOSTNAME]="nulldev"
+        [USERNAME]="harshal"
         [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_IN.UTF-8"
@@ -119,20 +119,23 @@ function setup_filesystems() {
     umount /mnt
 
     # Mount
-    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,autodefrag,subvol=@" "${CONFIG[ROOT_PART]}" /mnt
+    mount -o "noatime,compress=zstd:1,discard=async,ssd,subvol=@" "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary mount points dirs
     mkdir -p /mnt/{root,home,srv,snapshots,var/{cache,log},tmp,boot/efi}
 
     # Mount subvolumes
-    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,autodefrag,subvol=@root" "${CONFIG[ROOT_PART]}" /mnt/root
-    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,autodefrag,subvol=@home" "${CONFIG[ROOT_PART]}" /mnt/home
-    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,autodefrag,subvol=@srv" "${CONFIG[ROOT_PART]}" /mnt/srv
-    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,autodefrag,subvol=@snapshots" "${CONFIG[ROOT_PART]}" /mnt/snapshots
-    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,autodefrag,subvol=@cache" "${CONFIG[ROOT_PART]}" /mnt/var/cache
-    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,autodefrag,subvol=@log" "${CONFIG[ROOT_PART]}" /mnt/var/log
-    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,autodefrag,subvol=@tmp" "${CONFIG[ROOT_PART]}" /mnt/tmp
-
+    mount -o "noatime,compress=zstd,discard=async,ssd,subvol=@root" "${CONFIG[ROOT_PART]}" /mnt/root
+    mount -o "noatime,compress=zstd,discard=async,ssd,subvol=@home" "${CONFIG[ROOT_PART]}" /mnt/home
+    mount -o "noatime,compress=zstd,discard=async,ssd,subvol=@srv" "${CONFIG[ROOT_PART]}" /mnt/srv
+    mount -o "noatime,compress=zstd,discard=async,ssd,subvol=@snapshots" "${CONFIG[ROOT_PART]}" /mnt/snapshots
+    
+    mount -o "noatime,compress=zstd:1,discard=async,ssd,subvol=@cache" "${CONFIG[ROOT_PART]}" /mnt/var/cache
+    mount -o "noatime,compress=zstd:1,discard=async,ssd,subvol=@log" "${CONFIG[ROOT_PART]}" /mnt/var/log
+    
+    # Temporary directory - no compression
+    mount -o "noatime,ssd,subvol=@tmp" "${CONFIG[ROOT_PART]}" /mnt/tmp
+    
     # Mount EFI partition
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
 }
@@ -153,36 +156,196 @@ function install_base_system() {
 
     local base_packages=(
         # Core System
-        base base-devel
-        linux-firmware sof-firmware
-        linux linux-headers
-        linux-lts linux-lts-headers
+        base
+        base-devel
+        linux-firmware
+        sof-firmware
+        linux
+        linux-headers
+        linux-lts
+        linux-lts-headers
+
+        # Filesystem
+        btrfs-progs
+        dosfstools
+        e2fsprogs
+        exfatprogs
+        f2fs-tools
+        jfsutils
+        lvm2
+        mtools
+        nfs-utils
+        nilfs-utils
+        ntfs-3g
+        reiserfsprogs
+        xfsprogs
+        # Boot::
+        grub
+        efibootmgr
+        efitools
 
         # CPU & GPU Drivers
-        amd-ucode xf86-video-amdgpu
-        libva-mesa-driver libva-utils mesa lib32-mesa
-        vulkan-radeon lib32-vulkan-radeon vulkan-headers
-        xorg-server xorg-xinit xf86-input-libinput
-
-        # Essential System Utilities
-        networkmanager grub efibootmgr
-        btrfs-progs noto-fonts pacutils
-        thermald git reflector
-        neovim fastfetch neofetch timeshift
-        xclip laptop-detect zram-generator
-        flatpak glances ufw-extras nano
-
+        amd-ucode
+        xf86-input-libinput
+        xf86-video-amdgpu
+        xf86-video-ati
+        xorg-server
+        xorg-xdpyinfo
+        xorg-xinit
+        xorg-xinput
+        xorg-xkill
+        xorg-xrandr
+        # Network hardware::
+        b43-fwcutter
+        broadcom-wl-dkms
+        # Network::
+        bind
+        dnsmasq
+        ethtool
+        iwd
+        modemmanager
+        nbd
+        ndisc6
+        net-tools
+        netctl
+        networkmanager
+        networkmanager-openconnect
+        networkmanager-openvpn
+        nss-mdns
+        openconnect
+        openvpn
+        ppp
+        pptpclient
+        rp-pppoe
+        usb_modeswitch
+        vpnc
+        whois
+        wireless-regdb
+        # wireless tools::
+        wpa_supplicant
+        xl2tpd
+        # General hardware::
+        lsscsi
+        sg3_utils
+        smartmontools
+        usbutils
         # Multimedia & Bluetooth
         bluez bluez-utils
+        alsa-firmware
+        alsa-plugins
+        alsa-utils
+        gst-libav
+        gst-plugin-pipewire
+        gst-plugins-bad
+        gst-plugins-ugly
+        libdvdcss
+        pavucontrol
+        pipewire-alsa
+        pipewire-jack
+        pipewire-pulse
+        rtkit
+        sof-firmware
+        wireplumber
 
-        # Essential User Utilities
-        kdeconnect rhythmbox libreoffice-fresh
-        kitty firefox
+        # # Desktop environment :: KDE
+        # ark
+        # bluedevil
+        # breeze-gtk
+        # dolphin
+        # dolphin-plugins
+        # ffmpegthumbs
+        # fwupd
+        # gwenview
+        # haruna
+        # kate
+        # kcalc
+        # kde-cli-tools
+        # kde-gtk-config
+        # kdeconnect
+        # kdegraphics-thumbnailers
+        # kdenetwork-filesharing
+        # kdeplasma-addons
+        # kgamma
+        # kimageformats
+        # kinfocenter
+        # kio-admin
+        # kio-extras
+        # kio-fuse
+        # konsole
+        # kscreen
+        # kwallet-pam
+        # kwayland-integration
+        # libappindicator-gtk3
+        # maliit-keyboard
+        # okular
+        # plasma-browser-integration
+        # plasma-desktop
+        # plasma-disks
+        # plasma-firewall
+        # plasma-nm
+        # plasma-pa
+        # plasma-systemmonitor
+        # plasma-workspace
+        # powerdevil
+        # print-manager
+        # sddm-kcm
+        # spectacle
+        # xdg-desktop-portal-kde
+        # xsettingsd
+        # xwaylandvideobridge
+        # Fonts::
+        cantarell-fonts
+        noto-fonts
+        noto-fonts-emoji
+        noto-fonts-cjk
+        noto-fonts-extra
+        ttf-bitstream-vera
+        ttf-dejavu
+        ttf-liberation
+        ttf-opensans
 
-        ninja gcc gdb cmake clang nodejs npm php nmap
-        python python-pip python-scikit-learn
-        python-numpy python-pandas
-        python-scipy python-matplotlib
+        # Essential System Utilities
+        iptables-nft
+        thermald
+        git
+        reflector
+        pacutils
+        neovim
+        fastfetch
+        neofetch
+        timeshift
+        xclip
+        laptop-detect
+        zram-generator
+        flatpak
+        glances
+        ufw-extras
+        nano
+        wget
+        ninja
+        gcc
+        gdb
+        cmake
+        clang
+        nodejs
+        npm
+        php
+        nmap
+        meld
+        # Essential User Utilities::
+        kdeconnect
+        rhythmbox
+        libreoffice-fresh
+        kitty
+        firefox
+        # Python tools::
+        python
+        python-pip
+        python-scikit-learn
+        python-numpy
+        python-pandas
+        python-scipy
+        python-matplotlib
     )
     pacstrap -K /mnt --needed "${base_packages[@]}"
 }
@@ -240,38 +403,13 @@ EOF
 function apply_optimizations() {
     info "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<'EOF'
-# Selects the optimal scheduler for each drive type (HDD, SSD, NVMe)
-    tee "/usr/lib/udev/rules.d/60-ioschedulers.rules" <<'IOSCHED'
-# HDD
-ACTION=="add|change", KERNEL=="sd[a-z]*", ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="bfq"
-
-# SSD
-ACTION=="add|change", KERNEL=="sd[a-z]*|mmcblk[0-9]*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="mq-deadline"
-
-# NVMe SSD
-ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="none"
-IOSCHED
-
-# Sets SATA and IDE HDDs to maximum performance
-    tee "/usr/lib/udev/rules.d/69-hdparm.rules" <<'HDPARM'
-ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="1", \
-    RUN+="/usr/bin/hdparm -B 254 -S 0 /dev/%k"
-HDPARM
-
     tee "/usr/lib/systemd/zram-generator.conf" <<'ZCONF'
 [zram0] 
-compression-algorithm = zstd lz4 (type=huge)
-zram-size = ram
+compression-algorithm = zstd
+zram-size = ram * 2
 swap-priority = 100
 fs-type = swap
 ZCONF
-
-# Sets ZRAM swappiness to a more aggressive value so cache is more likely to swap to ZRAM
-    tee "/usr/lib/udev/rules.d/30-zram.rules" <<'ZRULES'
-TEST!="/dev/zram0", GOTO="zram_end"
-SYSCTL{vm.swappiness}="150"
-LABEL="zram_end"
-ZRULES
 
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
@@ -280,7 +418,6 @@ ZRULES
 
     # Refresh package databases
     pacman -Syy --noconfirm
-
 EOF
 }
 
@@ -288,14 +425,21 @@ EOF
 function desktop_install() {
     arch-chroot /mnt /bin/bash <<'EOF'
     pacman -S --needed --noconfirm \    
-    gnome gnome-tweaks gnome-terminal
+    gnome \
+    gnome-tweaks \
+    gnome-terminal
     
     pacman -Rns --noconfirm \
-    gnome-tour gnome-user-docs \
-    gnome-weather gnome-music \
-    epiphany yelp malcontent \
+    gnome-tour \
+    gnome-user-docs \
+    gnome-weather \
+    gnome-music \
+    epiphany \
+    yelp \
+    malcontent \
     gnome-software \
-    gnome-contacts gnome-calendar \
+    gnome-contacts \
+    gnome-calendar \
     gnome-shell-extensions
 
     systemctl enable gdm
@@ -309,7 +453,6 @@ function configure_services() {
     # Enable system services
     systemctl enable NetworkManager
     systemctl enable bluetooth.service
-    systemctl enable fstrim.timer
     systemctl enable thermald
     systemctl enable ufw
     ufw allow 1714:1764/udp
