@@ -164,17 +164,6 @@ function install_base_system() {
         # Filesystem
         btrfs-progs
         dosfstools
-        e2fsprogs
-        exfatprogs
-        f2fs-tools
-        jfsutils
-        lvm2
-        mtools
-        nfs-utils
-        nilfs-utils
-        ntfs-3g
-        reiserfsprogs
-        xfsprogs
         # Boot::
         grub
         efibootmgr
