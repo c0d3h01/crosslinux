@@ -76,7 +76,7 @@ function setup_disk() {
     sgdisk --set-alignment=4096 "${CONFIG[DRIVE]}"
 
     # Minimalist, partitioning
-    sgdisk --new=1:0:+1G \
+    sgdisk --new=1:0:+512M \
         --typecode=1:ef00 \
         --change-name=1:"EFI" \
         --new=2:0:0 \
@@ -102,7 +102,7 @@ function setup_filesystems() {
     mount "${CONFIG[ROOT_PART]}" /mnt
 
     # Define subvolumes
-    local subvolumes=("@" "@root" "@home" "@srv" "@snapshots" "@cache" "@log" "@tmp")
+    local subvolumes=("@" "@root" "@home" "@snapshots" "@cache" "@log" "@tmp")
 
     # Change to mount point
     pushd /mnt >/dev/null
@@ -122,18 +122,14 @@ function setup_filesystems() {
     mount -o "noatime,compress=zstd:1,discard=async,ssd,subvol=@" "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary mount points dirs
-    mkdir -p /mnt/{root,home,srv,snapshots,var/{cache,log},tmp,boot/efi}
+    mkdir -p /mnt/{root,home,snapshots,var/{cache,log},tmp,boot/efi}
 
     # Mount subvolumes
     mount -o "noatime,compress=zstd,discard=async,ssd,subvol=@root" "${CONFIG[ROOT_PART]}" /mnt/root
     mount -o "noatime,compress=zstd,discard=async,ssd,subvol=@home" "${CONFIG[ROOT_PART]}" /mnt/home
-    mount -o "noatime,compress=zstd,discard=async,ssd,subvol=@srv" "${CONFIG[ROOT_PART]}" /mnt/srv
     mount -o "noatime,compress=zstd,discard=async,ssd,subvol=@snapshots" "${CONFIG[ROOT_PART]}" /mnt/snapshots
-    
     mount -o "noatime,compress=zstd:1,discard=async,ssd,subvol=@cache" "${CONFIG[ROOT_PART]}" /mnt/var/cache
     mount -o "noatime,compress=zstd:1,discard=async,ssd,subvol=@log" "${CONFIG[ROOT_PART]}" /mnt/var/log
-    
-    # Temporary directory - no compression
     mount -o "noatime,ssd,subvol=@tmp" "${CONFIG[ROOT_PART]}" /mnt/tmp
     
     # Mount EFI partition
