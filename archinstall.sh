@@ -398,7 +398,7 @@ EOF
 # Performance optimization function
 function apply_optimizations() {
     info "Applying system optimizations..."
-    arch-chroot /mnt /bin/bash <<'EOF'
+    arch-chroot /mnt /bin/bash <<EOF
     tee "/usr/lib/systemd/zram-generator.conf" <<'ZCONF'
 [zram0] 
 compression-algorithm = zstd
@@ -419,8 +419,8 @@ EOF
 
 # Desktop Environment GNOME
 function desktop_install() {
-    arch-chroot /mnt /bin/bash <<'EOF'
-    pacman -S --needed --noconfirm \    
+    arch-chroot /mnt /bin/bash <<EOF
+    pacman -S --needed --noconfirm \
     gnome \
     gnome-tweaks \
     gnome-terminal
@@ -445,7 +445,7 @@ EOF
 # Services configuration function
 function configure_services() {
     info "Configuring services..."
-    arch-chroot /mnt /bin/bash <<'EOF'
+    arch-chroot /mnt /bin/bash <<EOF
     # Enable system services
     systemctl enable NetworkManager
     systemctl enable bluetooth.service
