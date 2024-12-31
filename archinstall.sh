@@ -164,7 +164,8 @@ function install_base_system() {
         # Filesystem
         btrfs-progs
         dosfstools
-        # Boot::
+
+        # Boot
         grub
         efibootmgr
         efitools
@@ -180,10 +181,10 @@ function install_base_system() {
         xorg-xinput
         xorg-xkill
         xorg-xrandr
-        # Network hardware::
+        
+        # Network
         b43-fwcutter
         broadcom-wl-dkms
-        # Network::
         bind
         dnsmasq
         ethtool
@@ -206,14 +207,15 @@ function install_base_system() {
         vpnc
         whois
         wireless-regdb
-        # wireless tools::
         wpa_supplicant
         xl2tpd
-        # General hardware::
+
+        # General hardware
         lsscsi
         sg3_utils
         smartmontools
         usbutils
+        
         # Multimedia & Bluetooth
         bluez bluez-utils
         alsa-firmware
@@ -232,7 +234,44 @@ function install_base_system() {
         sof-firmware
         wireplumber
 
-        # # Desktop environment :: KDE
+        # Gnome
+        adwaita-icon-theme
+        loupe
+        evince
+        file-roller
+        gdm
+        gnome-calculator
+        gnome-clocks
+        gnome-console
+        gnome-control-center
+        gnome-disk-utility
+        gnome-keyring
+        gnome-nettool
+        gnome-power-manager
+        gnome-screenshot
+        gnome-shell
+        gnome-system-monitor
+        gnome-terminal
+        gnome-text-editor
+        gnome-themes-extra
+        gnome-tweaks
+        gnome-software
+        gnome-calendar
+        gnome-usage
+        gvfs
+        gvfs-afc
+        gvfs-gphoto2
+        gvfs-mtp
+        gvfs-nfs
+        gvfs-smb
+        nautilus
+        sushi
+        totem
+        xdg-desktop-portal-gnome
+        xdg-desktop-portal
+        xdg-user-dirs-gtk
+
+        # KDE
         # ark
         # bluedevil
         # breeze-gtk
@@ -278,7 +317,8 @@ function install_base_system() {
         # xdg-desktop-portal-kde
         # xsettingsd
         # xwaylandvideobridge
-        # Fonts::
+
+        # Fonts
         cantarell-fonts
         noto-fonts
         noto-fonts-emoji
@@ -317,13 +357,15 @@ function install_base_system() {
         php
         nmap
         meld
-        # Essential User Utilities::
+
+        # User Utilities
         kdeconnect
         rhythmbox
         libreoffice-fresh
         kitty
         firefox
-        # Python tools::
+
+        # Python tools
         python
         python-pip
         python-scikit-learn
@@ -408,24 +450,8 @@ EOF
 
 # Desktop Environment GNOME
 function desktop_install() {
-    arch-chroot /mnt /bin/bash <<EOF
-    pacman -S --needed --noconfirm \
-    gnome \
-    gnome-tweaks \
-    gnome-terminal
+    arch-chroot /mnt /bin/bash <<EOF    
     
-    pacman -Rns --noconfirm \
-    gnome-tour \
-    gnome-user-docs \
-    gnome-weather \
-    gnome-music \
-    epiphany \
-    yelp \
-    malcontent \
-    gnome-software \
-    gnome-contacts \
-    gnome-calendar \
-    gnome-shell-extensions
 
     systemctl enable gdm
 EOF
@@ -577,8 +603,12 @@ fi
     # Install user applications via yay
     yay -S --noconfirm \
         telegram-desktop-bin \
-        vesktop-bin youtube-music-bin \
-        zoom visual-studio-code-bin wine \
+        vesktop-bin \
+        youtube-music-bin \
+        zoom \
+        visual-studio-code-bin \
+        vscodium-bin \
+        wine \
         gnome-shell-extension-dash-to-dock
 }
 
