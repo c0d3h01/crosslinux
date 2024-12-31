@@ -473,7 +473,6 @@ function archinstall() {
     install_base_system
     configure_system
     apply_optimizations
-    desktop_install
     configure_services
     umount -R /mnt
     success "Installation completed! You can now reboot your system."
