@@ -155,18 +155,14 @@ function install_base_system() {
         base
         base-devel
         linux-firmware
-        sof-firmware
-        linux
-        linux-headers
-        linux-lts
-        linux-lts-headers
+        linux linux-headers
+        linux-lts linux-lts-headers
 
         # Filesystem
         btrfs-progs
         dosfstools
 
         # Boot
-        grub
         efibootmgr
         efitools
 
@@ -250,12 +246,10 @@ function install_base_system() {
         gnome-power-manager
         gnome-screenshot
         gnome-shell
-        gnome-system-monitor
         gnome-terminal
         gnome-text-editor
         gnome-themes-extra
         gnome-tweaks
-        gnome-software
         gnome-calendar
         gnome-usage
         gvfs
@@ -271,53 +265,6 @@ function install_base_system() {
         xdg-desktop-portal
         xdg-user-dirs-gtk
 
-        # KDE
-        # ark
-        # bluedevil
-        # breeze-gtk
-        # dolphin
-        # dolphin-plugins
-        # ffmpegthumbs
-        # fwupd
-        # gwenview
-        # haruna
-        # kate
-        # kcalc
-        # kde-cli-tools
-        # kde-gtk-config
-        # kdeconnect
-        # kdegraphics-thumbnailers
-        # kdenetwork-filesharing
-        # kdeplasma-addons
-        # kgamma
-        # kimageformats
-        # kinfocenter
-        # kio-admin
-        # kio-extras
-        # kio-fuse
-        # konsole
-        # kscreen
-        # kwallet-pam
-        # kwayland-integration
-        # libappindicator-gtk3
-        # maliit-keyboard
-        # okular
-        # plasma-browser-integration
-        # plasma-desktop
-        # plasma-disks
-        # plasma-firewall
-        # plasma-nm
-        # plasma-pa
-        # plasma-systemmonitor
-        # plasma-workspace
-        # powerdevil
-        # print-manager
-        # sddm-kcm
-        # spectacle
-        # xdg-desktop-portal-kde
-        # xsettingsd
-        # xwaylandvideobridge
-
         # Fonts
         cantarell-fonts
         noto-fonts
@@ -332,6 +279,7 @@ function install_base_system() {
         # Essential System Utilities
         iptables-nft
         thermald
+        ananicy-cpp
         git
         reflector
         pacutils
@@ -357,6 +305,7 @@ function install_base_system() {
         php
         nmap
         meld
+        yad
 
         # User Utilities
         kdeconnect
@@ -600,7 +549,9 @@ fi
         visual-studio-code-bin \
         vscodium-bin \
         wine \
-        gnome-shell-extension-dash-to-dock
+        gnome-shell-extension-dash-to-dock \
+        gpu-screen-recorder-gtk \
+
 }
 
 # Main execution function
