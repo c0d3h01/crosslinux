@@ -405,6 +405,7 @@ function configure_services() {
     systemctl enable NetworkManager
     systemctl enable bluetooth.service
     systemctl enable thermald
+    systemctl enable ananicy-cpp
     systemctl enable ufw
     systemctl enable gdm
     ufw allow 1714:1764/udp
