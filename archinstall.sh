@@ -553,7 +553,8 @@ fi
         wine \
         gnome-shell-extension-dash-to-dock \
         gpu-screen-recorder-gtk \
-
+        notion-desktop-git \
+        notion-calender-electron
 }
 
 # Main execution function
