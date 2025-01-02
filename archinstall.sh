@@ -306,6 +306,7 @@ function install_base_system() {
         nmap
         meld
         yad
+        btop
 
         # User Utilities
         kdeconnect
