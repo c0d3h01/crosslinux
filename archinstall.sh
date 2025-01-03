@@ -154,8 +154,7 @@ function install_base_system() {
 
     local base_packages=(
         # Core System
-        base
-        base-devel
+        base base-devel
         linux-firmware
         linux linux-headers
         linux-lts linux-lts-headers
@@ -278,9 +277,9 @@ function install_base_system() {
         ttf-opensans
 
         # Essential System Utilities
+        mkinitcpio-firmware
         iptables-nft
         thermald
-        ananicy-cpp
         git
         reflector
         pacutils
@@ -292,7 +291,6 @@ function install_base_system() {
         flatpak
         ufw-extras
         wget
-        ninja
         gcc
         gdb
         cmake
@@ -304,9 +302,9 @@ function install_base_system() {
         meld
         yad
         btop
-        tlp
-        tlp-rdw
-
+        tlp tlp-rdw
+        ananicy-cpp
+ 
         # User Utilities
         kdeconnect
         rhythmbox
