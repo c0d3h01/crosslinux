@@ -277,7 +277,6 @@ function install_base_system() {
         ttf-opensans
 
         # Essential System Utilities
-        mkinitcpio-firmware
         iptables-nft
         thermald
         git
