@@ -78,13 +78,10 @@ function setup_disk() {
     sgdisk --new=1:0:+1G \
         --typecode=1:ef00 \
         --change-name=1:"EFI" \
-        --new=2:0:+16G \
-        --typecode=2:8200 \
-        --change-name=2:"SWAP" \
-        --new=3:0:0 \
-        --typecode=3:8300 \
-        --change-name=3:"ROOT" \
-        --attributes=3:set:2 \
+        --new=2:0:0 \
+        --typecode=2:8300 \
+        --change-name=2:"ROOT" \
+        --attributes=2:set:2 \
         "${CONFIG[DRIVE]}"
 
     # Verify and update partition table
