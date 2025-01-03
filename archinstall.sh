@@ -45,8 +45,9 @@ function init_config() {
         [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_IN.UTF-8"
+        [SWAP_SIZE]="16G"
+        [BTRFS_OPTS]="noatime,compress=zstd:1,ssd,space_cache=v2,discard=async,autodefrag"
     )
-
     CONFIG[EFI_PART]="${CONFIG[DRIVE]}p1"
     CONFIG[ROOT_PART]="${CONFIG[DRIVE]}p2"
 }
@@ -75,14 +76,16 @@ function setup_disk() {
     # Alignment
     sgdisk --set-alignment=4096 "${CONFIG[DRIVE]}"
 
-    # Minimalist, partitioning
-    sgdisk --new=1:0:+512M \
+    sgdisk --new=1:0:+1G \
         --typecode=1:ef00 \
         --change-name=1:"EFI" \
-        --new=2:0:0 \
-        --typecode=2:8300 \
-        --change-name=2:"ROOT" \
-        --attributes=2:set:2 \
+        --new=2:0:+${CONFIG[SWAP_SIZE]} \
+        --typecode=2:8200 \
+        --change-name=2:"SWAP" \
+        --new=3:0:0 \
+        --typecode=3:8300 \
+        --change-name=3:"ROOT" \
+        --attributes=3:set:2 \
         "${CONFIG[DRIVE]}"
 
     # Verify and update partition table
@@ -119,17 +122,17 @@ function setup_filesystems() {
     umount /mnt
 
     # Mount
-    mount -o "noatime,compress=zstd:1,discard=async,ssd,subvol=@" "${CONFIG[ROOT_PART]}" /mnt
+    mount -o "${CONFIG[BTRFS_OPTS]}" "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary mount points dirs
     mkdir -p /mnt/{root,home,snapshots,var/{cache,log},tmp,boot/efi}
 
     # Mount subvolumes
-    mount -o "noatime,compress=zstd,discard=async,ssd,subvol=@root" "${CONFIG[ROOT_PART]}" /mnt/root
-    mount -o "noatime,compress=zstd,discard=async,ssd,subvol=@home" "${CONFIG[ROOT_PART]}" /mnt/home
-    mount -o "noatime,compress=zstd,discard=async,ssd,subvol=@snapshots" "${CONFIG[ROOT_PART]}" /mnt/snapshots
-    mount -o "noatime,compress=zstd:1,discard=async,ssd,subvol=@cache" "${CONFIG[ROOT_PART]}" /mnt/var/cache
-    mount -o "noatime,compress=zstd:1,discard=async,ssd,subvol=@log" "${CONFIG[ROOT_PART]}" /mnt/var/log
+    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@root" "${CONFIG[ROOT_PART]}" /mnt/root
+    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@home" "${CONFIG[ROOT_PART]}" /mnt/home
+    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@snapshots" "${CONFIG[ROOT_PART]}" /mnt/snapshots
+    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@cache" "${CONFIG[ROOT_PART]}" /mnt/var/cache
+    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@log" "${CONFIG[ROOT_PART]}" /mnt/var/log
     mount -o "noatime,ssd,subvol=@tmp" "${CONFIG[ROOT_PART]}" /mnt/tmp
     
     # Mount EFI partition
@@ -251,7 +254,6 @@ function install_base_system() {
         gnome-themes-extra
         gnome-tweaks
         gnome-calendar
-        gnome-usage
         gvfs
         gvfs-afc
         gvfs-gphoto2
@@ -285,7 +287,6 @@ function install_base_system() {
         pacutils
         neovim
         fastfetch
-        neofetch
         timeshift
         xclip
         laptop-detect
@@ -293,7 +294,6 @@ function install_base_system() {
         flatpak
         glances
         ufw-extras
-        nano
         wget
         ninja
         gcc
@@ -307,12 +307,12 @@ function install_base_system() {
         meld
         yad
         btop
+        tlp tlp-rdw
 
         # User Utilities
         kdeconnect
         rhythmbox
         libreoffice-fresh
-        kitty
         firefox
 
         # Python tools
@@ -380,14 +380,6 @@ EOF
 function apply_optimizations() {
     info "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<EOF
-    tee "/usr/lib/systemd/zram-generator.conf" <<'ZCONF'
-[zram0] 
-compression-algorithm = zstd
-zram-size = ram * 2
-swap-priority = 100
-fs-type = swap
-ZCONF
-
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
@@ -411,6 +403,7 @@ function configure_services() {
     systemctl enable gdm
     ufw allow 1714:1764/udp
     ufw allow 1714:1764/tcp
+    systemctl enable tlp.service
 EOF
 }
 
