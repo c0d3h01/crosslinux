@@ -231,39 +231,39 @@ function install_base_system() {
         sof-firmware
         wireplumber
 
-        # Xfce4
-        blueman
+        # Gnome
+        adwaita-icon-theme
+        loupe
+        evince
         file-roller
-        galculator
+        gdm
+        gnome-calculator
+        gnome-clocks
+        gnome-console
+        gnome-control-center
+        gnome-disk-utility
+        gnome-keyring
+        gnome-nettool
+        gnome-power-manager
+        gnome-screenshot
+        gnome-shell
+        gnome-terminal
+        gnome-text-editor
+        gnome-themes-extra
+        gnome-tweaks
+        gnome-calendar
         gvfs
         gvfs-afc
         gvfs-gphoto2
         gvfs-mtp
         gvfs-nfs
         gvfs-smb
-        lightdm
-        lightdm-slick-greeter
-        mousepad
-        network-manager-applet
-        parole
-        ristretto
-        thunar-archive-plugin
-        thunar-media-tags-plugin
+        nautilus
+        sushi
+        totem
+        xdg-desktop-portal-gnome
+        xdg-desktop-portal
         xdg-user-dirs-gtk
-        xfce4
-        xfce4-battery-plugin
-        xfce4-datetime-plugin
-        xfce4-mount-plugin
-        xfce4-netload-plugin
-        xfce4-notifyd
-        xfce4-pulseaudio-plugin
-        xfce4-screensaver
-        xfce4-screenshooter
-        xfce4-taskmanager
-        xfce4-wavelan-plugin
-        xfce4-weather-plugin
-        xfce4-whiskermenu-plugin
-        xfce4-xkb-plugin
 
         # Fonts
         cantarell-fonts
@@ -397,7 +397,7 @@ function configure_services() {
     systemctl enable ananicy-cpp
     systemctl enable fstrim.timer
     systemctl enable ufw
-    systemctl enable lightdm
+    systemctl enable gdm
     ufw allow 1714:1764/udp
     ufw allow 1714:1764/tcp
     systemctl enable tlp.service
@@ -545,6 +545,10 @@ fi
         gpu-screen-recorder-gtk \
         notion-desktop-git \
         notion-calender-electron
+
+    git config --global user.name "c0d3h01"
+    git config --global user.email "harshalsawant2004h@gmail.com"
+    ssh-keygen -t ed25519 -C "harshalsawant2004h@gmail.com" -f ~/.ssh/id_ed25519 -N ""
 }
 
 # Main execution function
