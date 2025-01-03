@@ -397,6 +397,7 @@ function configure_services() {
     systemctl enable bluetooth.service
     systemctl enable thermald
     systemctl enable ananicy-cpp
+    systemctl enable fstrim.timer
     systemctl enable ufw
     systemctl enable lightdm
     ufw allow 1714:1764/udp
