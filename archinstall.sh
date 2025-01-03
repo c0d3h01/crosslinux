@@ -284,13 +284,12 @@ function install_base_system() {
         git
         reflector
         pacutils
-        neovim
+        vim
         fastfetch
         timeshift
         xclip
         laptop-detect
         flatpak
-        glances
         ufw-extras
         wget
         ninja
@@ -305,7 +304,8 @@ function install_base_system() {
         meld
         yad
         btop
-        tlp tlp-rdw
+        tlp
+        tlp-rdw
 
         # User Utilities
         kdeconnect
@@ -398,7 +398,7 @@ function configure_services() {
     systemctl enable thermald
     systemctl enable ananicy-cpp
     systemctl enable ufw
-    systemctl enable gdm
+    systemctl enable lightdm
     ufw allow 1714:1764/udp
     ufw allow 1714:1764/tcp
     systemctl enable tlp.service
