@@ -142,7 +142,9 @@ function setup_filesystems() {
 # Base system installation function
 function install_base_system() {
     info "Installing base system..."
-    
+
+    reflector --country India --age 6 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+
     # Pacman configure for arch-iso
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout' /etc/pacman.conf
@@ -231,39 +233,39 @@ function install_base_system() {
         sof-firmware
         wireplumber
 
-        # Gnome
-        adwaita-icon-theme
-        loupe
-        evince
+        # Xfce4
+        blueman
         file-roller
-        gdm
-        gnome-calculator
-        gnome-clocks
-        gnome-console
-        gnome-control-center
-        gnome-disk-utility
-        gnome-keyring
-        gnome-nettool
-        gnome-power-manager
-        gnome-screenshot
-        gnome-shell
-        gnome-terminal
-        gnome-text-editor
-        gnome-themes-extra
-        gnome-tweaks
-        gnome-calendar
+        galculator
         gvfs
         gvfs-afc
         gvfs-gphoto2
         gvfs-mtp
         gvfs-nfs
         gvfs-smb
-        nautilus
-        sushi
-        totem
-        xdg-desktop-portal-gnome
-        xdg-desktop-portal
+        lightdm
+        lightdm-slick-greeter
+        mousepad
+        network-manager-applet
+        parole
+        ristretto
+        thunar-archive-plugin
+        thunar-media-tags-plugin
         xdg-user-dirs-gtk
+        xfce4
+        xfce4-battery-plugin
+        xfce4-datetime-plugin
+        xfce4-mount-plugin
+        xfce4-netload-plugin
+        xfce4-notifyd
+        xfce4-pulseaudio-plugin
+        xfce4-screensaver
+        xfce4-screenshooter
+        xfce4-taskmanager
+        xfce4-wavelan-plugin
+        xfce4-weather-plugin
+        xfce4-whiskermenu-plugin
+        xfce4-xkb-plugin
 
         # Fonts
         cantarell-fonts
@@ -288,7 +290,6 @@ function install_base_system() {
         timeshift
         xclip
         laptop-detect
-        zram-generator
         flatpak
         glances
         ufw-extras
