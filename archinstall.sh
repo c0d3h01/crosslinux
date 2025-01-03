@@ -45,7 +45,6 @@ function init_config() {
         [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_IN.UTF-8"
-        [SWAP_SIZE]="16G"
         [BTRFS_OPTS]="noatime,compress=zstd:1,ssd,space_cache=v2,discard=async,autodefrag"
     )
     CONFIG[EFI_PART]="${CONFIG[DRIVE]}p1"
@@ -79,7 +78,7 @@ function setup_disk() {
     sgdisk --new=1:0:+1G \
         --typecode=1:ef00 \
         --change-name=1:"EFI" \
-        --new=2:0:+${CONFIG[SWAP_SIZE]} \
+        --new=2:0:+16G \
         --typecode=2:8200 \
         --change-name=2:"SWAP" \
         --new=3:0:0 \
@@ -133,7 +132,7 @@ function setup_filesystems() {
     mount -o "${CONFIG[BTRFS_OPTS]},subvol=@snapshots" "${CONFIG[ROOT_PART]}" /mnt/snapshots
     mount -o "${CONFIG[BTRFS_OPTS]},subvol=@cache" "${CONFIG[ROOT_PART]}" /mnt/var/cache
     mount -o "${CONFIG[BTRFS_OPTS]},subvol=@log" "${CONFIG[ROOT_PART]}" /mnt/var/log
-    mount -o "noatime,ssd,subvol=@tmp" "${CONFIG[ROOT_PART]}" /mnt/tmp
+    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@tmp" "${CONFIG[ROOT_PART]}" /mnt/tmp
     
     # Mount EFI partition
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
