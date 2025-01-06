@@ -211,6 +211,7 @@ function install_base_system() {
         sg3_utils
         smartmontools
         usbutils
+        zram-generator
         
         # Multimedia & Bluetooth
         bluez bluez-utils
