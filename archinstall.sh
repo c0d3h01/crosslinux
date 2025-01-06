@@ -333,7 +333,7 @@ function configure_system() {
     genfstab -U /mnt >>/mnt/etc/fstab
 
     # Chroot and configure
-    arch-chroot /mnt /bin/bash <<EOF
+    arch-chroot /mnt /bin/bash << 'EOF'
     # Set timezone and clock
     ln -sf /usr/share/zoneinfo/${CONFIG[TIMEZONE]} /etc/localtime
     hwclock --systohc
@@ -377,13 +377,13 @@ EOF
 # Performance optimization function
 function apply_optimizations() {
     info "Applying system optimizations..."
-    arch-chroot /mnt /bin/bash <<EOF
+    arch-chroot /mnt /bin/bash << 'EOF'
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
-#     cat > "/etc/xdg/reflector/reflector.conf" <<REF
+#     cat > "/etc/xdg/reflector/reflector.conf" << 'REF'
 # --save /etc/pacman.d/mirrorlist
 # --country India
 # --age 6
@@ -391,7 +391,7 @@ function apply_optimizations() {
 # --sort rate
 # REF
 
-    cat > "/etc/systemd/system/reflector.service" <<REFS
+    cat > "/etc/systemd/system/reflector.service" << 'REFS'
 [Unit]
 Description=Pacman mirrorlist update
 Wants=network-online.target
@@ -408,18 +408,32 @@ REFS
     # Refresh package databases
     pacman -Syy --noconfirm
 
+    cat > "/usr/lib/systemd/zram-generator.conf" << 'ZCONF'
+[zram0] 
+compression-algorithm = zstd
+zram-size = ram * 2
+swap-priority = 100
+fs-type = swap
+ZCONF
+
+    cat > "/etc/sysctl.d/99-kernel-sched-rt.conf" << 'TWEAKS'
+vm.swappiness = 100
+vm.vfs_cache_pressure=50
+vm.page-cluster = 1
+TWEAKS
+
 EOF
 }
 
 function snapper_config() {
     
-    arch-chroot /mnt /bin/bash <<EOF
+    arch-chroot /mnt /bin/bash << 'EOF'
 
     # Create snapper config for root
     snapper -c root create-config /
 
     # Configure snapper for root
-    cat << 'SCONF' | sudo tee -a /etc/snapper/configs/root
+    cat << 'SCONF' | tee -a /etc/snapper/configs/root
 TIMELINE_MIN_AGE="1800"
 TIMELINE_LIMIT_HOURLY="5"
 TIMELINE_LIMIT_DAILY="7"
@@ -471,7 +485,7 @@ EOF
 function configure_services() {
     info "Configuring services..."
 
-    arch-chroot /mnt /bin/bash <<EOF
+    arch-chroot /mnt /bin/bash << 'EOF'
 
     # Enable system services
     systemctl enable NetworkManager
