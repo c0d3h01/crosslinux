@@ -158,9 +158,11 @@ function install_base_system() {
 
         # Filesystem
         btrfs-progs
+        grub-btrfs
         dosfstools
 
         # Boot
+        grub
         efibootmgr
         efitools
 
@@ -281,7 +283,7 @@ function install_base_system() {
         pacutils
         vim
         fastfetch
-        timeshift
+        snapper
         xclip
         laptop-detect
         flatpak
@@ -300,6 +302,8 @@ function install_base_system() {
         btop
         tlp tlp-rdw
         ananicy-cpp
+        earlyoom
+        irqbalance
  
         # User Utilities
         kdeconnect
@@ -308,6 +312,8 @@ function install_base_system() {
         firefox
 
         # Python tools
+        docker
+        docker-compose
         python
         python-pip
         python-scikit-learn
@@ -377,26 +383,121 @@ function apply_optimizations() {
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
+#     cat > "/etc/xdg/reflector/reflector.conf" <<REF
+# --save /etc/pacman.d/mirrorlist
+# --country India
+# --age 6
+# --protocol https
+# --sort rate
+# REF
+
+    cat > "/etc/systemd/system/reflector.service" <<REFS
+[Unit]
+Description=Pacman mirrorlist update
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/reflector --country India --age 6 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+
+[Install]
+WantedBy=multi-user.target
+REFS
+
     # Refresh package databases
     pacman -Syy --noconfirm
+
+EOF
+}
+
+function snapper_config() {
+    
+    arch-chroot /mnt /bin/bash <<EOF
+
+    # Create snapper config for root
+    snapper -c root create-config /
+
+    # Configure snapper for root
+    cat << 'SCONF' | sudo tee -a /etc/snapper/configs/root
+TIMELINE_MIN_AGE="1800"
+TIMELINE_LIMIT_HOURLY="5"
+TIMELINE_LIMIT_DAILY="7"
+TIMELINE_LIMIT_WEEKLY="0"
+TIMELINE_LIMIT_MONTHLY="0"
+TIMELINE_LIMIT_YEARLY="0"
+SCONF
+
+    # Create systemd service for boot snapshots
+    cat > /etc/systemd/system/snapper-boot.service << 'SBOOT'
+[Unit]
+Description=Snapper Boot Snapshot
+After=local-fs.target
+Before=sysinit.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bash -c '/usr/bin/snapper --config root create --cleanup-algorithm number --description "Boot Snapshot"'
+TimeoutSec=60
+
+[Install]
+WantedBy=multi-user.target
+SBOOT
+
+    # Create cleanup service
+    cat > /etc/systemd/system/snapper-cleanup.service << 'SCLEAN'
+[Unit]
+Description=Snapper Cleanup Service
+After=snapper-boot.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bash -c '/usr/bin/snapper --config root cleanup number'
+
+[Install]
+WantedBy=multi-user.target
+SCLEAN
+    
+    # Configure retention
+    snapper -c root set-config "NUMBER_LIMIT=2"
+    snapper -c root set-config "NUMBER_MIN_AGE=1800"
+
+    # Update GRUB
+    grub-mkconfig -o /boot/grub/grub.cfg
 EOF
 }
 
 # Services configuration function
 function configure_services() {
     info "Configuring services..."
+
     arch-chroot /mnt /bin/bash <<EOF
+
     # Enable system services
     systemctl enable NetworkManager
     systemctl enable bluetooth.service
     systemctl enable thermald
-    systemctl enable ananicy-cpp
     systemctl enable fstrim.timer
-    systemctl enable ufw
+    systemctl enable reflector
+    systemctl enable docker
     systemctl enable gdm
+
+    ufw default deny incoming
+    ufw default allow outgoing
     ufw allow 1714:1764/udp
     ufw allow 1714:1764/tcp
+    ufw enable
+    systemctl enable ufw
+
     systemctl enable tlp.service
+    systemctl enable ananicy-cpp
+    systemctl enable earlyoom
+    systemctl enable irqbalance
+
+    systemctl enable snapper-boot.service
+    systemctl enable snapper-cleanup.service
+    systemctl enable grub-btrfsd
+
 EOF
 }
 
@@ -410,6 +511,7 @@ function archinstall() {
     install_base_system
     configure_system
     apply_optimizations
+    snapper_config
     configure_services
     umount -R /mnt
     success "Installation completed! You can now reboot your system."
@@ -488,11 +590,8 @@ EOL
     fi
 
     # Change default shell to Zsh
-    echo "Manaul setup ->..."
-    echo ""
     echo "chsh -s $(which zsh)"
-    echo "Please restart your session after steps." 
-    # sudo chown -R harsh:harsh android-sdk
+    echo "Please restart your session after steps."
 }
 
 function remove_zsh() {
@@ -540,7 +639,12 @@ fi
         gnome-shell-extension-dash-to-dock \
         gpu-screen-recorder-gtk \
         notion-desktop-git \
-        notion-calender-electron
+        notion-calender-electron \
+        docker-desktop \
+        postman-bin
+
+    # Configure Docker
+    sudo usermod -aG docker "$USER"
 
     git config --global user.name "c0d3h01"
     git config --global user.email "harshalsawant2004h@gmail.com"
@@ -596,6 +700,9 @@ Options:
     -h, --help
 EOF
 }
+
+# chown -R harsh:harsh android-sdk
+# 
 
 # Execute main function
 main "$@"
