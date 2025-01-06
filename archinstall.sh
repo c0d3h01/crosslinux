@@ -334,7 +334,7 @@ function configure_system() {
     genfstab -U /mnt >>/mnt/etc/fstab
 
     # Chroot and configure
-    arch-chroot /mnt /bin/bash << 'EOF'
+    arch-chroot /mnt /bin/bash << EOF
     # Set timezone and clock
     ln -sf /usr/share/zoneinfo/${CONFIG[TIMEZONE]} /etc/localtime
     hwclock --systohc
