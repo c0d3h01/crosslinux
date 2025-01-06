@@ -75,13 +75,13 @@ function setup_disk() {
     # Alignment
     sgdisk --set-alignment=4096 "${CONFIG[DRIVE]}"
 
-    sgdisk --new=1:0:+1G \
+    sgdisk \
+        --new=1:0:+1G \
         --typecode=1:ef00 \
         --change-name=1:"EFI" \
         --new=2:0:0 \
         --typecode=2:8300 \
         --change-name=2:"ROOT" \
-        --attributes=2:set:2 \
         "${CONFIG[DRIVE]}"
 
     # Verify and update partition table
