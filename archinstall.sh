@@ -419,7 +419,7 @@ ZCONF
 
     cat > "/etc/sysctl.d/99-kernel-sched-rt.conf" << 'TWEAKS'
 vm.swappiness = 100
-vm.vfs_cache_pressure=50
+vm.vfs_cache_pressure = 50
 vm.page-cluster = 1
 TWEAKS
 
