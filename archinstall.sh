@@ -311,7 +311,12 @@ function install_base_system() {
         libreoffice-fresh
         firefox
 
-        # Python tools
+        # Tools
+        rocm-hip-sdk
+        rocm-opencl-sdk
+        hip-runtime-amd
+        hipblas
+        rocm-cmake
         docker
         python
         python-pip
@@ -425,6 +430,7 @@ EOF
 }
 
 function snapper_config() {
+    pacman -Sy --noconfirm snapper
     snapper -c root create-config /mnt/
     snapper -c home create-config /mnt/home
 
