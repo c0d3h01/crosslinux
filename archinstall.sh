@@ -165,41 +165,22 @@ function install_base_system() {
         amd-ucode
         xf86-input-libinput
         xf86-video-amdgpu
-        xf86-video-ati
         xorg-server
-        xorg-xdpyinfo
         xorg-xinit
-        xorg-xinput
-        xorg-xkill
         xorg-xrandr
         
         # Network
-        b43-fwcutter
-        broadcom-wl-dkms
-        bind
-        dnsmasq
         ethtool
         iwd
         modemmanager
-        nbd
-        ndisc6
         net-tools
         netctl
         networkmanager
-        networkmanager-openconnect
-        networkmanager-openvpn
         nss-mdns
-        openconnect
-        openvpn
-        ppp
-        pptpclient
-        rp-pppoe
         usb_modeswitch
-        vpnc
         whois
         wireless-regdb
         wpa_supplicant
-        xl2tpd
 
         # General hardware
         lsscsi
@@ -210,20 +191,13 @@ function install_base_system() {
         
         # Multimedia & Bluetooth
         bluez bluez-utils
-        alsa-firmware
         alsa-plugins
         alsa-utils
-        gst-libav
         gst-plugin-pipewire
-        gst-plugins-bad
-        gst-plugins-ugly
-        libdvdcss
-        pavucontrol
         pipewire-alsa
         pipewire-jack
         pipewire-pulse
         rtkit
-        sof-firmware
         wireplumber
 
         # Gnome
@@ -261,15 +235,10 @@ function install_base_system() {
         xdg-user-dirs-gtk
 
         # Fonts
-        cantarell-fonts
         noto-fonts
         noto-fonts-emoji
-        noto-fonts-cjk
-        noto-fonts-extra
-        ttf-bitstream-vera
         ttf-dejavu
         ttf-liberation
-        ttf-opensans
 
         # Essential System Utilities
         iptables-nft
@@ -291,13 +260,10 @@ function install_base_system() {
         clang
         nodejs
         npm
-        php
         nmap
-        meld
         yad
-        btop
+        glances
         tlp tlp-rdw
-        ananicy-cpp
         earlyoom
         irqbalance
  
@@ -309,11 +275,11 @@ function install_base_system() {
 
         # Tools
         jupyterlab
-        rocm-hip-sdk
-        rocm-opencl-sdk
-        hip-runtime-amd
-        hipblas
-        rocm-cmake
+        # rocm-hip-sdk
+        # rocm-opencl-sdk
+        # hip-runtime-amd
+        # hipblas
+        # rocm-cmake
         docker
         python
         python-virtualenv
@@ -364,7 +330,7 @@ HOST
     echo "root:${CONFIG[PASSWORD]}" | chpasswd
 
     # Create user
-    useradd -m -G wheel,audio,video,network,storage -s /bin/bash ${CONFIG[USERNAME]}
+    useradd -m -G wheel,audio,video,storage -s /bin/bash ${CONFIG[USERNAME]}
     echo "${CONFIG[USERNAME]}:${CONFIG[PASSWORD]}" | chpasswd
     
     # Configure sudo
@@ -394,14 +360,6 @@ function apply_optimizations() {
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
-
-#     cat > "/etc/xdg/reflector/reflector.conf" << 'REF'
-# --save /etc/pacman.d/mirrorlist
-# --country India
-# --age 6
-# --protocol https
-# --sort rate
-# REF
 
     cat > "/etc/systemd/system/reflector.service" << 'REFS'
 [Unit]
@@ -474,7 +432,6 @@ function configure_services() {
     systemctl enable ufw
 
     systemctl enable tlp.service
-    systemctl enable ananicy-cpp
     systemctl enable earlyoom
     systemctl enable irqbalance
 EOF
