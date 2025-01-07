@@ -158,7 +158,6 @@ function install_base_system() {
 
         # Filesystem
         btrfs-progs
-        grub-btrfs
         dosfstools
 
         # Boot
@@ -314,7 +313,6 @@ function install_base_system() {
 
         # Python tools
         docker
-        docker-compose
         python
         python-pip
         python-scikit-learn
@@ -427,59 +425,21 @@ EOF
 }
 
 function snapper_config() {
-    
-    arch-chroot /mnt /bin/bash << 'EOF'
+    snapper -c root create-config /mnt/
+    snapper -c home create-config /mnt/home
 
-    # Create snapper config for root
-    snapper -c root create-config /
+    # Configure the snapshotting interval
+    echo "TIMELINE_CREATE=yes" >> /mnt/etc/snapper/configs/root
+    echo "TIMELINE_LIMIT_HOURLY=1" >> /mnt/etc/snapper/configs/root
+    echo "TIMELINE_LIMIT_DAILY=5" >> /mnt/etc/snapper/configs/root
 
-    # Configure snapper for root
-    cat << 'SCONF' | tee -a /etc/snapper/configs/root
-TIMELINE_MIN_AGE="1800"
-TIMELINE_LIMIT_HOURLY="5"
-TIMELINE_LIMIT_DAILY="7"
-TIMELINE_LIMIT_WEEKLY="0"
-TIMELINE_LIMIT_MONTHLY="0"
-TIMELINE_LIMIT_YEARLY="0"
-SCONF
+    echo "TIMELINE_CREATE=yes" >> /mnt/etc/snapper/configs/home
+    echo "TIMELINE_LIMIT_HOURLY=1" >> /mnt/etc/snapper/configs/home
+    echo "TIMELINE_LIMIT_DAILY=5" >> /mnt/etc/snapper/configs/home
 
-    # Create systemd service for boot snapshots
-    cat > /etc/systemd/system/snapper-boot.service << 'SBOOT'
-[Unit]
-Description=Snapper Boot Snapshot
-After=local-fs.target
-Before=sysinit.target
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/bash -c '/usr/bin/snapper --config root create --cleanup-algorithm number --description "Boot Snapshot"'
-TimeoutSec=60
-
-[Install]
-WantedBy=multi-user.target
-SBOOT
-
-    # Create cleanup service
-    cat > /etc/systemd/system/snapper-cleanup.service << 'SCLEAN'
-[Unit]
-Description=Snapper Cleanup Service
-After=snapper-boot.service
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/bash -c '/usr/bin/snapper --config root cleanup number'
-
-[Install]
-WantedBy=multi-user.target
-SCLEAN
-    
-    # Configure retention
-    snapper -c root set-config "NUMBER_LIMIT=2"
-    snapper -c root set-config "NUMBER_MIN_AGE=1800"
-
-    # Update GRUB
-    grub-mkconfig -o /boot/grub/grub.cfg
-EOF
+    # Enable and start Snapper timers to run automatically
+    arch-chroot /mnt systemctl enable snapper-timeline.timer
+    arch-chroot /mnt systemctl start snapper-timeline.timer
 }
 
 # Services configuration function
@@ -508,11 +468,6 @@ function configure_services() {
     systemctl enable ananicy-cpp
     systemctl enable earlyoom
     systemctl enable irqbalance
-
-    systemctl enable snapper-boot.service
-    systemctl enable snapper-cleanup.service
-    systemctl enable grub-btrfsd
-
 EOF
 }
 
@@ -649,12 +604,10 @@ fi
         youtube-music-bin \
         zoom \
         visual-studio-code-bin \
-        vscodium-bin \
         wine \
         gnome-shell-extension-dash-to-dock \
         gpu-screen-recorder-gtk \
         notion-desktop-git \
-        notion-calender-electron \
         docker-desktop \
         postman-bin
 
