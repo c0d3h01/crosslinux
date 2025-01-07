@@ -62,12 +62,7 @@ function error() {
 function success() { echo -e "${GREEN}SUCCESS:$* ${NC}"; }
 
 # Disk preparation function
-function setup_disk() {    
-    # Safety confirmation
-    read -p "WARNING: This will erase ${CONFIG[DRIVE]}. Continue? (y/N)" -n 1 -r
-    echo
-    [[ ! $REPLY =~ ^[Yy]$ ]] && error "Operation cancelled by user"
-
+function setup_disk() {
     # Disk preparation
     sgdisk --zap-all "${CONFIG[DRIVE]}"
     sgdisk --clear "${CONFIG[DRIVE]}"
@@ -76,7 +71,7 @@ function setup_disk() {
     sgdisk --set-alignment=4096 "${CONFIG[DRIVE]}"
 
     sgdisk \
-        --new=1:0:+1G \
+        --new=1:0:+512M \
         --typecode=1:ef00 \
         --change-name=1:"EFI" \
         --new=2:0:0 \
@@ -85,7 +80,7 @@ function setup_disk() {
         "${CONFIG[DRIVE]}"
 
     # Verify and update partition table
-    sgdisk --verify "${CONFIG[DRIVE]}" || error "Partition verification failed"
+    sgdisk --verify "${CONFIG[DRIVE]}"
     partprobe "${CONFIG[DRIVE]}"
 }
 
@@ -101,7 +96,7 @@ function setup_filesystems() {
     mount "${CONFIG[ROOT_PART]}" /mnt
 
     # Define subvolumes
-    local subvolumes=("@" "@root" "@home" "@snapshots" "@cache" "@log" "@tmp")
+    local subvolumes=("@" "@home" "@cache" "@log" "@swap")
 
     # Change to mount point
     pushd /mnt >/dev/null
@@ -121,18 +116,19 @@ function setup_filesystems() {
     mount -o "${CONFIG[BTRFS_OPTS]}" "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary mount points dirs
-    mkdir -p /mnt/{root,home,snapshots,var/{cache,log},tmp,boot/efi}
+    mkdir -p /mnt/{home,var/{cache,log},swap,boot/efi}
 
     # Mount subvolumes
-    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@root" "${CONFIG[ROOT_PART]}" /mnt/root
     mount -o "${CONFIG[BTRFS_OPTS]},subvol=@home" "${CONFIG[ROOT_PART]}" /mnt/home
-    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@snapshots" "${CONFIG[ROOT_PART]}" /mnt/snapshots
     mount -o "${CONFIG[BTRFS_OPTS]},subvol=@cache" "${CONFIG[ROOT_PART]}" /mnt/var/cache
     mount -o "${CONFIG[BTRFS_OPTS]},subvol=@log" "${CONFIG[ROOT_PART]}" /mnt/var/log
-    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@tmp" "${CONFIG[ROOT_PART]}" /mnt/tmp
+    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@swap" "${CONFIG[ROOT_PART]}" /mnt/swap
     
     # Mount EFI partition
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
+
+    # Create swap file
+    btrfs filesystem mkswapfile --size 4g --uuid clear /mnt/swap/swapfile
 }
 
 # Base system installation function
@@ -154,7 +150,7 @@ function install_base_system() {
         base base-devel
         linux-firmware
         linux linux-headers
-        linux-lts linux-lts-headers
+        linux-zen linux-zen-headers
 
         # Filesystem
         btrfs-progs
@@ -374,7 +370,15 @@ HOST
     # Configure sudo
     sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 
-    grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=arch-GRUB
+    # Adding swapfile to fstab
+    echo "/swap/swapfile none swap defaults 0 0" >> /mnt/etc/fstab
+
+    # Configuring hibernation with resume offset
+    SWAP_OFFSET=$(filefrag -v /swap/swapfile | awk '/ 0:/ {print $4}' | cut -d '.' -f 1)
+    sed -i "/^GRUB_CMDLINE_LINUX=/s|\"$|resume=/swap/swapfile resume_offset=$SWAP_OFFSET\"|" /etc/default/grub
+    sed -i 's/^HOOKS=(.*)/HOOKS=(base udev autodetect modconf block filesystems keyboard fsck resume)/' /etc/mkinitcpio.conf
+
+    grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=Arch-GRUB
     grub-mkconfig -o /boot/grub/grub.cfg
     mkinitcpio -P
 EOF
@@ -382,8 +386,10 @@ EOF
 
 # Performance optimization function
 function apply_optimizations() {
+
     info "Applying system optimizations..."
     arch-chroot /mnt /bin/bash << 'EOF'
+
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
@@ -417,21 +423,16 @@ REFS
     cat > "/usr/lib/systemd/zram-generator.conf" << 'ZCONF'
 [zram0] 
 compression-algorithm = zstd
-zram-size = ram * 2
+zram-size = ram
 swap-priority = 100
 fs-type = swap
 ZCONF
-
-    cat > "/etc/sysctl.d/99-kernel-sched-rt.conf" << 'TWEAKS'
-vm.swappiness = 100
-vm.vfs_cache_pressure = 50
-vm.page-cluster = 1
-TWEAKS
 
 EOF
 }
 
 function snapper_config() {
+    
     pacman -Sy --noconfirm snapper
     snapper -c root create-config /mnt/
     snapper -c home create-config /mnt/home
