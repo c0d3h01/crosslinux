@@ -312,6 +312,7 @@ function install_base_system() {
         firefox
 
         # Tools
+        jupyterlab
         rocm-hip-sdk
         rocm-opencl-sdk
         hip-runtime-amd
