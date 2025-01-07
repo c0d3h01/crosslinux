@@ -320,6 +320,7 @@ function install_base_system() {
         rocm-cmake
         docker
         python
+        python-virtualenv
         python-pip
         python-scikit-learn
         python-numpy
