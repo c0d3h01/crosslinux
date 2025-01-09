@@ -58,77 +58,58 @@ function error() {
     echo -e "${RED}ERROR: $* ${NC}" >&2
     exit 1
 }
-
 function success() { echo -e "${GREEN}SUCCESS:$* ${NC}"; }
 
-# Disk preparation function
 function setup_disk() {
-    # Disk preparation
+    # Wipe and prepare the disk
     sgdisk --zap-all "${CONFIG[DRIVE]}"
-    sgdisk --clear "${CONFIG[DRIVE]}"
-    
-    # Alignment
-    sgdisk --set-alignment=4096 "${CONFIG[DRIVE]}"
 
+    # Create partitions
     sgdisk \
-        --new=1:0:+512M \
-        --typecode=1:ef00 \
-        --change-name=1:"EFI" \
-        --new=2:0:0 \
-        --typecode=2:8300 \
-        --change-name=2:"ROOT" \
+        --new=1:0:+512M --typecode=1:ef00 --change-name=1:"EFI" \
+        --new=2:0:+16G --typecode=2:8200 --change-name=2:"SWAP" \
+        --new=3:0:0 --typecode=3:8300 --change-name=3:"ROOT" \
         "${CONFIG[DRIVE]}"
 
-    # Verify and update partition table
-    sgdisk --verify "${CONFIG[DRIVE]}"
+    # Reload the partition table
     partprobe "${CONFIG[DRIVE]}"
 }
 
 function setup_filesystems() {
-    # Format
+    # Format partitions
     mkfs.fat -F32 "${CONFIG[EFI_PART]}"
-    mkfs.btrfs -f -L ROOT \
-    -n 32k \
-    -m dup \
-    "${CONFIG[ROOT_PART]}"
+    mkswap -L SWAP "${CONFIG[SWAP_PART]}"
+    mkfs.btrfs -f "${CONFIG[ROOT_PART]}"
 
-    # Mount root partition
+    # Enable swap
+    swapon "${CONFIG[SWAP_PART]}"
+
+    # Mount root partition temporarily
     mount "${CONFIG[ROOT_PART]}" /mnt
 
-    # Define subvolumes
-    local subvolumes=("@" "@home" "@cache" "@log" "@swap")
+    # Create subvolumes
+    btrfs subvolume create /mnt/@
+    btrfs subvolume create /mnt/@home
+    btrfs subvolume create /mnt/@cache
+    btrfs subvolume create /mnt/@log
+    btrfs subvolume create /mnt/@snapshots
 
-    # Change to mount point
-    pushd /mnt >/dev/null
-
-    # Create subvolumes with loops
-    for subvol in "${subvolumes[@]}"; do
-        btrfs subvolume create "$subvol"
-    done
-
-    # Return to previous directory
-    popd >/dev/null
-
-    # Unmount root partition
+    # Unmount and remount with options
     umount /mnt
+    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@" "${CONFIG[ROOT_PART]}" /mnt
 
-    # Mount
-    mount -o "${CONFIG[BTRFS_OPTS]}" "${CONFIG[ROOT_PART]}" /mnt
-
-    # Create necessary mount points dirs
-    mkdir -p /mnt/{home,var/{cache,log},swap,boot/efi}
+    # Create necessary directories
+    mkdir -p /mnt/{home,var/cache,var/log,boot/efi,.snapshots}
 
     # Mount subvolumes
     mount -o "${CONFIG[BTRFS_OPTS]},subvol=@home" "${CONFIG[ROOT_PART]}" /mnt/home
     mount -o "${CONFIG[BTRFS_OPTS]},subvol=@cache" "${CONFIG[ROOT_PART]}" /mnt/var/cache
     mount -o "${CONFIG[BTRFS_OPTS]},subvol=@log" "${CONFIG[ROOT_PART]}" /mnt/var/log
-    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@swap" "${CONFIG[ROOT_PART]}" /mnt/swap
-    
+    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@snapshots" "${CONFIG[ROOT_PART]}" /mnt/.snapshots
+
     # Mount EFI partition
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
 
-    # Create swap file
-    btrfs filesystem mkswapfile --size 4g --uuid clear /mnt/swap/swapfile
 }
 
 # Base system installation function
@@ -150,7 +131,7 @@ function install_base_system() {
         base base-devel
         linux-firmware
         linux linux-headers
-        linux-zen linux-zen-headers
+        linux-lts linux-lts-headers
 
         # Filesystem
         btrfs-progs
@@ -253,15 +234,6 @@ function install_base_system() {
         laptop-detect
         flatpak
         ufw-extras
-        wget
-        gcc
-        gdb
-        cmake
-        clang
-        nodejs
-        npm
-        nmap
-        yad
         glances
         tlp tlp-rdw
         earlyoom
@@ -273,13 +245,22 @@ function install_base_system() {
         libreoffice-fresh
         firefox
 
-        # Tools
+        # Devtools
+        wget
+        gcc
+        gdb
+        cmake
+        clang
+        nodejs
+        npm
+        nmap
+        yad
         jupyterlab
-        # rocm-hip-sdk
-        # rocm-opencl-sdk
-        # hip-runtime-amd
-        # hipblas
-        # rocm-cmake
+        rocm-hip-sdk
+        rocm-opencl-sdk
+        hip-runtime-amd
+        hipblas
+        rocm-cmake
         docker
         python
         python-virtualenv
@@ -318,31 +299,27 @@ function configure_system() {
     echo "${CONFIG[HOSTNAME]}" > /etc/hostname
 
     # Configure hosts
-    tee > /etc/hosts <<'HOST'
-127.0.0.1  localhost
-::1        localhost ip6-localhost ip6-loopback
-ff02::1    ip6-allnodes
-ff02::2    ip6-allrouters
+    tee > "/etc/hosts" << 'HOST'
+127.0.0.1 localhost
 127.0.1.1  ${CONFIG[HOSTNAME]}
+
+# The following lines are desirable for IPv6 capable hosts
+::1     ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
 HOST
 
     # Set root password
     echo "root:${CONFIG[PASSWORD]}" | chpasswd
 
     # Create user
-    useradd -m -G wheel,audio,video,storage -s /bin/bash ${CONFIG[USERNAME]}
+    useradd -m -G wheel -s /bin/bash ${CONFIG[USERNAME]}
     echo "${CONFIG[USERNAME]}:${CONFIG[PASSWORD]}" | chpasswd
     
     # Configure sudo
     sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
-
-    # Adding swapfile to fstab
-    echo "/swap/swapfile none swap defaults 0 0" >> /mnt/etc/fstab
-
-    # Configuring hibernation with resume offset
-    SWAP_OFFSET=$(filefrag -v /swap/swapfile | awk '/ 0:/ {print $4}' | cut -d '.' -f 1)
-    sed -i "/^GRUB_CMDLINE_LINUX=/s|\"$|resume=/swap/swapfile resume_offset=$SWAP_OFFSET\"|" /etc/default/grub
-    sed -i 's/^HOOKS=(.*)/HOOKS=(base udev autodetect modconf block filesystems keyboard fsck resume)/' /etc/mkinitcpio.conf
 
     grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=Arch-GRUB
     grub-mkconfig -o /boot/grub/grub.cfg
@@ -369,6 +346,7 @@ After=network-online.target
 
 [Service]
 Type=oneshot
+ExecStartPre=/bin/sleep 300
 ExecStart=/usr/bin/reflector --country India --age 6 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
 
 [Install]
@@ -381,7 +359,7 @@ REFS
     cat > "/usr/lib/systemd/zram-generator.conf" << 'ZCONF'
 [zram0] 
 compression-algorithm = zstd
-zram-size = ram
+zram-size = ram * 2
 swap-priority = 100
 fs-type = swap
 ZCONF
@@ -391,22 +369,45 @@ EOF
 
 function snapper_config() {
     
-    pacman -Sy --noconfirm snapper
-    snapper -c root create-config /mnt/
-    snapper -c home create-config /mnt/home
+    SWAP_OFFSET=$(filefrag -v /mnt/swap/swapfile | awk '/ 0:/ {print $4}' | cut -d '.' -f 1)
+    sed -i "/^GRUB_CMDLINE_LINUX=/s|\"$|resume=/swap/swapfile resume_offset=$SWAP_OFFSET\"|" /mnt/etc/default/grub
+    sed -i 's/^HOOKS=(.*)/HOOKS=(base udev autodetect modconf block filesystems keyboard fsck resume)/' /mnt/etc/mkinitcpio.conf
 
-    # Configure the snapshotting interval
-    echo "TIMELINE_CREATE=yes" >> /mnt/etc/snapper/configs/root
-    echo "TIMELINE_LIMIT_HOURLY=1" >> /mnt/etc/snapper/configs/root
-    echo "TIMELINE_LIMIT_DAILY=5" >> /mnt/etc/snapper/configs/root
+    arch-chroot /mnt /bin/bash << 'EOF'
 
-    echo "TIMELINE_CREATE=yes" >> /mnt/etc/snapper/configs/home
-    echo "TIMELINE_LIMIT_HOURLY=1" >> /mnt/etc/snapper/configs/home
-    echo "TIMELINE_LIMIT_DAILY=5" >> /mnt/etc/snapper/configs/home
+    snapper -c root create-config /
+    snapper -c home create-config /home
 
-    # Enable and start Snapper timers to run automatically
-    arch-chroot /mnt systemctl enable snapper-timeline.timer
-    arch-chroot /mnt systemctl start snapper-timeline.timer
+    cat > /etc/snapper/configs/root << SNAPR
+TIMELINE_CREATE=yes
+TIMELINE_LIMIT_HOURLY=2
+TIMELINE_LIMIT_DAILY=5
+SNAPR
+
+    cat > /etc/snapper/configs/home << SNAPH
+TIMELINE_CREATE=yes
+TIMELINE_LIMIT_HOURLY=1
+TIMELINE_LIMIT_DAILY=5
+SNAPH
+
+    cat > /etc/systemd/system/boot-snapshot.service << BSNAP
+[Unit]
+Description=Create system snapshot after boot
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStartPre=/bin/sleep 300
+ExecStart=/usr/bin/snapper -c root create -d "Boot root snapshot"
+ExecStart=/usr/bin/snapper -c home create -d "Boot home snapshot"
+
+[Install]
+WantedBy=multi-user.target
+BSNAP
+
+    grub-mkconfig -o /boot/grub/grub.cfg
+    mkinitcpio -P
+EOF
 }
 
 # Services configuration function
@@ -423,6 +424,8 @@ function configure_services() {
     systemctl enable reflector
     systemctl enable docker
     systemctl enable gdm
+    systemctl enable snapper-timeline.timer
+    systemctl enable boot-snapshot.service
 
     ufw default deny incoming
     ufw default allow outgoing
@@ -564,16 +567,18 @@ else
 fi
 
     # Install user applications via yay
-    yay -S --noconfirm \
+    yay -S --noconfirm --nodeps --nodebug \
         telegram-desktop-bin \
         vesktop-bin \
         youtube-music-bin \
         zoom \
         visual-studio-code-bin \
+        vscodium-bin \
         wine \
         gnome-shell-extension-dash-to-dock \
         gpu-screen-recorder-gtk \
         notion-desktop-git \
+        github-desktop-bin \
         docker-desktop \
         postman-bin
 
