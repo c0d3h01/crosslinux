@@ -48,7 +48,8 @@ function init_config() {
         [BTRFS_OPTS]="noatime,compress=zstd:1,ssd,space_cache=v2,discard=async,autodefrag"
     )
     CONFIG[EFI_PART]="${CONFIG[DRIVE]}p1"
-    CONFIG[ROOT_PART]="${CONFIG[DRIVE]}p2"
+    CONFIG[SWAP_PART]="${CONFIG[DRIVE]}p2"
+    CONFIG[ROOT_PART]="${CONFIG[DRIVE]}p3"
 }
 
 # Logging functions
