@@ -305,19 +305,32 @@ function apply_customization() {
     snapper -c root create-config /
     snapper -c home create-config /home
 
-    cat > "/etc/snapper/configs/root" << 'SNAPR'
+    cat > "/etc/snapper/configs/root" << SNAPR
 TIMELINE_CREATE=yes
 TIMELINE_LIMIT_HOURLY=2
 TIMELINE_LIMIT_DAILY=5
 SNAPR
 
-    cat > "/etc/snapper/configs/home" << 'SNAPH'
+    cat > "/etc/snapper/configs/home" << SNAPH
 TIMELINE_CREATE=yes
 TIMELINE_LIMIT_HOURLY=1
 TIMELINE_LIMIT_DAILY=5
 SNAPH
 
-    systemctl enable NetworkManager bluetooth thermald fstrim.timer reflector docker gdm earlyoom pipewire pipewire-pulse wireplumber
+    systemctl enable \
+    NetworkManager \
+    bluetooth \
+    thermald \
+    fstrim.timer \
+    reflector \
+    docker \
+    gdm \
+    earlyoom
+
+    systemctl --user enable --now \
+    pipewire.service \
+    pipewire-pulse.service \
+    wireplumber.service
 
     # Configure Docker
     usermod -aG docker "$USER"
@@ -325,6 +338,7 @@ SNAPH
     git config --global user.name "c0d3h01"
     git config --global user.email "harshalsawant2004h@gmail.com"
     ssh-keygen -t ed25519 -C "harshalsawant2004h@gmail.com" -f ~/.ssh/id_ed25519 -N ""
+    git clone https://aur.archlinux.org/yay-bin.git ~/yay
 EOF
 }
 
