@@ -34,8 +34,8 @@ function init_config() {
 
     CONFIG=(
         [DRIVE]="/dev/nvme0n1"
-        [HOSTNAME]="archlinux"
-        [USERNAME]="c0d3h01"
+        [HOSTNAME]="localhost"
+        [USERNAME]="harshal"
         [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_IN.UTF-8"
@@ -99,7 +99,7 @@ function setup_filesystems() {
     # Mount EFI partition
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
 
-    btrfs filesystem mkswapfile --size 16g --uuid clear /mnt/swap/swapfile
+    btrfs filesystem mkswapfile --size 6g --uuid clear /mnt/swap/swapfile
 }
 
 # Base system installation function
@@ -198,7 +198,7 @@ function install_base_system() {
         pacutils
         vim
         fastfetch
-        snapper
+        timeshift
         xclip
         laptop-detect
         flatpak
@@ -216,6 +216,7 @@ function install_base_system() {
         cmake
         clang
         nodejs
+        sshpass
         openssh
         rsync
         npm
@@ -277,14 +278,22 @@ function configure_system() {
 EOF
 }
 
-function apply_optimizations() {
-    
-    info "Configuring hibernation with resume offset..."
-    SWAP_OFFSET=$(filefrag -v /mnt/swap/swapfile | awk '/ 0:/ {print $4}' | cut -d '.' -f 1)
-    sed -i "/^GRUB_CMDLINE_LINUX=/s|\"$|resume=/swap/swapfile resume_offset=$SWAP_OFFSET\"|" /mnt/etc/default/grub
-    sed -i 's/^HOOKS=(.*)/HOOKS=(base udev autodetect modconf block filesystems keyboard fsck resume)/' /mnt/etc/mkinitcpio.conf
+function apply_customization() {
 
     arch-chroot /mnt /bin/bash << 'EOF'
+
+    pacman -S --noconfirm snapper snap-pac
+
+    # Get the offset
+    SWAP_OFFSET=$(filefrag -v /swap/swapfile | awk '/ 0:/ {print $4}' | cut -d '.' -f 1)
+
+    # Get the device path (replace /dev/sdXY with your actual partition from df output)
+    RESUME_DEVICE=$(df /swap | awk 'NR==2 {print $1}')
+
+    # Modify GRUB with the correct device path
+    sed -i "/^GRUB_CMDLINE_LINUX=/s|\"$|resume=$RESUME_DEVICE resume_offset=$SWAP_OFFSET\"|" /etc/default/grub
+
+    echo "/swap/swapfile none swap defaults,pri=100 0 0" >> /mnt/etc/fstab
 
     grub-mkconfig -o /boot/grub/grub.cfg
     mkinitcpio -P
@@ -297,38 +306,30 @@ function apply_optimizations() {
     snapper -c root create-config /
     snapper -c home create-config /home
 
-    cat > /etc/snapper/configs/root << SNAPR
+    cat > "/etc/snapper/configs/root" << 'SNAPR'
 TIMELINE_CREATE=yes
 TIMELINE_LIMIT_HOURLY=2
 TIMELINE_LIMIT_DAILY=5
 SNAPR
 
-    cat > /etc/snapper/configs/home << SNAPH
+    cat > "/etc/snapper/configs/home" << 'SNAPH'
 TIMELINE_CREATE=yes
 TIMELINE_LIMIT_HOURLY=1
 TIMELINE_LIMIT_DAILY=5
 SNAPH
 
-    cat > /etc/systemd/system/boot-snapshot.service << BSNAP
-[Unit]
-Description=Create system snapshot after boot
-After=multi-user.target
+    systemctl enable NetworkManager bluetooth thermald fstrim.timer reflector docker gdm earlyoom pipewire pipewire-pulse wireplumber
 
-[Service]
-Type=oneshot
-ExecStartPre=/bin/sleep 300
-ExecStart=/usr/bin/snapper -c root create -d "Boot root snapshot"
-ExecStart=/usr/bin/snapper -c home create -d "Boot home snapshot"
+    # Configure Docker
+    usermod -aG docker "$USER"
 
-[Install]
-WantedBy=multi-user.target
-BSNAP
-
-    systemctl enable NetworkManager bluetooth thermald fstrim.timer reflector docker gdm earlyoom
+    git config --global user.name "c0d3h01"
+    git config --global user.email "harshalsawant2004h@gmail.com"
+    ssh-keygen -t ed25519 -C "harshalsawant2004h@gmail.com" -f ~/.ssh/id_ed25519 -N ""
 EOF
 }
 
-function archinstall() {
+function main() {
     info "Starting Arch Linux installation script..."
     init_config
 
@@ -337,93 +338,10 @@ function archinstall() {
     setup_filesystems
     install_base_system
     configure_system
-    apply_optimizations
+    apply_customization
     umount -R /mnt
     success "Installation completed! You can now reboot your system."
 }
 
-# User environment setup function
-function usrsetup() {
-
-# Check if yay is already installed
-if command -v yay &> /dev/null; then
-    echo "yay is already installed. Skipping installation."
-else
-    # Clone yay-bin from AUR
-    git clone https://aur.archlinux.org/yay-bin.git
-    cd yay-bin
-    makepkg -si
-    cd ..
-    rm -rf yay-bin
-fi
-
-    # Install user applications via yay
-    yay -S --noconfirm --nodeps --nodebug \
-        telegram-desktop-bin \
-        vesktop-bin \
-        youtube-music-bin \
-        zoom \
-        visual-studio-code-bin \
-        wine \
-        gnome-shell-extension-dash-to-dock \
-        gpu-screen-recorder-gtk \
-        notion-desktop-git \
-        github-desktop-bin \
-        docker-desktop \
-        postman-bin
-
-    # Configure Docker
-    sudo usermod -aG docker "$USER"
-
-    git config --global user.name "c0d3h01"
-    git config --global user.email "harshalsawant2004h@gmail.com"
-    ssh-keygen -t ed25519 -C "harshalsawant2004h@gmail.com" -f ~/.ssh/id_ed25519 -N ""
-}
-
-# Main execution function
-function main() {
-    case "$1" in
-    "--install" | "-i")
-        archinstall
-        ;;
-
-    "--setup" | "-s")
-        usrsetup
-        ;;
-
-    "--help" | "-h")
-        show_help
-        ;;
-
-    "")
-        echo "Error: No arguments provided"
-        show_help
-        exit 1
-        ;;
-    *)
-        echo "Error: Unknown option: $1"
-        show_help
-        exit 1
-        ;;
-    esac
-
-}
-
-function show_help() {
-    tee <<EOF
-Usage: $(basename "$0") [OPTION]
-
-Options:
-    -i, --install (Arch install)
-    -s, --setup (Arch usr setup)
-    -iz, --zsh-i (Install ZSH)
-    -rz, --zsh-r (Remove ZSH)
-    -h, --help
-EOF
-}
-
-# chown -R harsh:harsh android-sdk
-# 
-
 # Execute main function
-main "$@"
+main
