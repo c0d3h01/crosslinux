@@ -35,7 +35,7 @@ function init_config() {
     CONFIG=(
         [DRIVE]="/dev/nvme0n1"
         [HOSTNAME]="localhost"
-        [USERNAME]="harshal"
+        [USERNAME]="c0d3h01"
         [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_IN.UTF-8"
@@ -60,7 +60,7 @@ function setup_disk() {
 
     # Create partitions
     sgdisk \
-        --new=1:0:+512M --typecode=1:ef00 --change-name=1:"EFI" \
+        --new=1:0:+1g --typecode=1:ef00 --change-name=1:"EFI" \
         --new=2:0:0 --typecode=2:8300 --change-name=2:"ROOT" \
         "${CONFIG[DRIVE]}"
 
@@ -99,7 +99,7 @@ function setup_filesystems() {
     # Mount EFI partition
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
 
-    btrfs filesystem mkswapfile --size 6g --uuid clear /mnt/swap/swapfile
+    btrfs filesystem mkswapfile --size 16g --uuid clear /mnt/swap/swapfile
 }
 
 # Base system installation function
@@ -119,7 +119,7 @@ function install_base_system() {
     local base_packages=(
         # Core System
         base base-devel
-        linux-firmware linux-lts
+        linux-firmware linux-zen
 
         # Filesystem
         btrfs-progs
@@ -193,20 +193,19 @@ function install_base_system() {
 
         # Essential System Utilities
         zstd
-        zram-generator
         thermald
         git
         reflector
         pacutils
         nano
-        vim
+        neovim
         fastfetch
         timeshift
         snapper snap-pac
         xclip
         laptop-detect
         flatpak
-        gufw
+        ufw-extras
         glances
         power-profiles-daemon
         earlyoom
@@ -224,7 +223,6 @@ function install_base_system() {
         nodejs
         sshpass
         openssh
-        rsync
         npm
         nmap
         jupyterlab
@@ -232,11 +230,6 @@ function install_base_system() {
         python
         python-virtualenv
         python-pip
-        python-scikit-learn
-        python-numpy
-        python-pandas
-        python-scipy
-        python-matplotlib
     )
     pacstrap -K /mnt --needed "${base_packages[@]}"
 }
@@ -306,13 +299,13 @@ function apply_customization() {
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
-    cat > "/usr/lib/systemd/zram-generator.conf" << ZRAM
-[zram0]
-compression-algorithm = zstd                
-zram-size = ram
-swap-priority = 100
-fs-type = swap
-ZRAM
+    cat > "/etc/sysctl.conf" << SYS
+vm.swappiness=10
+vm.vfs_cache_pressure=50
+vm.dirty_background_ratio=5
+vm.dirty_ratio=10
+vm.dirty_writeback_centisecs=1500
+SYS
 
     snapper -c root create-config /
     snapper -c home create-config /home
@@ -334,7 +327,6 @@ SNAPH
     bluetooth \
     thermald \
     fstrim.timer \
-    reflector \
     docker \
     gdm \
     earlyoom \
