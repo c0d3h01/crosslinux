@@ -293,7 +293,7 @@ function apply_customization() {
     # Modify GRUB with the correct device path
     sed -i "/^GRUB_CMDLINE_LINUX=/s|\"$|resume=$RESUME_DEVICE resume_offset=$SWAP_OFFSET\"|" /etc/default/grub
 
-    echo "/swap/swapfile none swap defaults,pri=100 0 0" >> /mnt/etc/fstab
+    echo "/swap/swapfile none swap defaults,pri=100 0 0" >> /etc/fstab
 
     grub-mkconfig -o /boot/grub/grub.cfg
     mkinitcpio -P
