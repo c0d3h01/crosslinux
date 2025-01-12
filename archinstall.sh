@@ -208,6 +208,7 @@ function install_base_system() {
         flatpak
         gufw
         glances
+        power-profiles-daemon
         earlyoom
         ananicy-cpp
 
@@ -337,7 +338,8 @@ SNAPH
     docker \
     gdm \
     earlyoom \
-    ananicy-cpp
+    ananicy-cpp \
+    power-profiles-daemon
 
     # systemctl --user enable --now \
     # pipewire.service \
