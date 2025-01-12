@@ -156,6 +156,7 @@ function install_base_system() {
         evince
         file-roller
         gdm
+        gnome-browser-connector
         gnome-calculator
         gnome-clocks
         gnome-console
@@ -192,19 +193,23 @@ function install_base_system() {
 
         # Essential System Utilities
         zstd
+        zram-generator
         thermald
         git
         reflector
         pacutils
+        nano
         vim
         fastfetch
         timeshift
+        snapper snap-pac
         xclip
         laptop-detect
         flatpak
         gufw
         glances
         earlyoom
+        ananicy-cpp
 
         # User Utilities
         kdeconnect
@@ -282,8 +287,6 @@ function apply_customization() {
 
     arch-chroot /mnt /bin/bash << 'EOF'
 
-    pacman -S --noconfirm snapper snap-pac
-
     # Get the offset
     SWAP_OFFSET=$(filefrag -v /swap/swapfile | awk '/ 0:/ {print $4}' | cut -d '.' -f 1)
 
@@ -301,6 +304,14 @@ function apply_customization() {
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
+
+    cat > "/usr/lib/systemd/zram-generator.conf" << ZRAM
+[zram0]
+compression-algorithm = zstd                
+zram-size = ram
+swap-priority = 100
+fs-type = swap
+ZRAM
 
     snapper -c root create-config /
     snapper -c home create-config /home
@@ -325,20 +336,19 @@ SNAPH
     reflector \
     docker \
     gdm \
-    earlyoom
+    earlyoom \
+    ananicy-cpp
 
-    systemctl --user enable --now \
-    pipewire.service \
-    pipewire-pulse.service \
-    wireplumber.service
+    # systemctl --user enable --now \
+    # pipewire.service \
+    # pipewire-pulse.service \
+    # wireplumber.service
 
     # Configure Docker
     usermod -aG docker "$USER"
 
     git config --global user.name "c0d3h01"
     git config --global user.email "harshalsawant2004h@gmail.com"
-    ssh-keygen -t ed25519 -C "harshalsawant2004h@gmail.com" -f ~/.ssh/id_ed25519 -N ""
-    git clone https://aur.archlinux.org/yay-bin.git ~/yay
 EOF
 }
 
