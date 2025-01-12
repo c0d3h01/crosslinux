@@ -287,7 +287,6 @@ function apply_customization() {
     # Get the offset
     SWAP_OFFSET=$(filefrag -v /swap/swapfile | awk '/ 0:/ {print $4}' | cut -d '.' -f 1)
 
-    # Get the device path (replace /dev/sdXY with your actual partition from df output)
     RESUME_DEVICE=$(df /swap | awk 'NR==2 {print $1}')
 
     # Modify GRUB with the correct device path
