@@ -167,37 +167,84 @@ function install_base_system() {
         wireplumber
 
         # Gnome
-        rhythmbox
-        loupe
-        evince
-        file-roller
-        nautilus
-        sushi
-        totem
-        gdm
-        gnome-calculator
-        gnome-clocks
-        gnome-console
-        gnome-control-center
-        gnome-disk-utility
-        gnome-keyring
-        gnome-nettool
-        gnome-power-manager
-        gnome-screenshot
-        gnome-shell
-        gnome-system-monitor
-        gnome-terminal
-        gnome-text-editor
-        gnome-tweaks
-        gvfs
-        gvfs-afc
-        gvfs-gphoto2
-        gvfs-mtp
-        gvfs-nfs
-        gvfs-smb
-        xdg-desktop-portal-gnome
-        xdg-desktop-portal
-        xdg-user-dirs-gtk
+        # rhythmbox
+        # loupe
+        # evince
+        # file-roller
+        # nautilus
+        # sushi
+        # totem
+        # gdm
+        # gnome-calculator
+        # gnome-clocks
+        # gnome-console
+        # gnome-control-center
+        # gnome-disk-utility
+        # gnome-keyring
+        # gnome-nettool
+        # gnome-power-manager
+        # gnome-screenshot
+        # gnome-shell
+        # gnome-system-monitor
+        # gnome-terminal
+        # gnome-text-editor
+        # gnome-tweaks
+        # gvfs
+        # gvfs-afc
+        # gvfs-gphoto2
+        # gvfs-mtp
+        # gvfs-nfs
+        # gvfs-smb
+        # xdg-desktop-portal-gnome
+        # xdg-desktop-portal
+        # xdg-user-dirs-gtk
+
+        # KDE
+        ark
+        bluedevil
+        breeze-gtk
+        dolphin
+        dolphin-plugins
+        ffmpegthumbs
+        fwupd
+        gwenview
+        haruna
+        kate
+        kcalc
+        kde-cli-tools
+        kde-gtk-config
+        kdeconnect
+        kdegraphics-thumbnailers
+        kdenetwork-filesharing
+        kdeplasma-addons
+        kgamma
+        kimageformats
+        kinfocenter
+        kio-admin
+        kio-extras
+        kio-fuse
+        konsole
+        kscreen
+        kwallet-pam
+        kwayland-integration
+        libappindicator-gtk3
+        maliit-keyboard
+        okular
+        plasma-browser-integration
+        plasma-desktop
+        plasma-disks
+        plasma-firewall
+        plasma-nm
+        plasma-pa
+        plasma-systemmonitor
+        plasma-workspace
+        powerdevil
+        print-manager
+        sddm-kcm
+        spectacle
+        xdg-desktop-portal-kde
+        xsettingsd
+        xwaylandvideobridge
 
         # Fonts
         noto-fonts
@@ -227,6 +274,18 @@ function install_base_system() {
         sshpass
         openssh
         nmap
+        inxi
+        bluez-utils
+        dnsutils
+        doas
+        hddtemp
+        net-tools
+        ipmitool
+        freeipmi
+        lvm2
+        vulkan-tools
+        wayland-utils
+        wmctrl 
 
         # Development-tool
         gcc
