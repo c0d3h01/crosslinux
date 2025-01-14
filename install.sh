@@ -329,10 +329,9 @@ ZRAM
     usermod -aG docker "$USER"
 EOF
 
-    pacman -Sy --noconfirm snapper snap-pac
+    pacman -Sy --noconfirm snapper
     snapper -c root create-config /mnt/
     snapper -c home create-config /mnt/home
-
 }
 
 function main() {
