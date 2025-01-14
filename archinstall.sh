@@ -67,7 +67,7 @@ function setup_disk() {
 
 function setup_filesystems() {
     # Format partitions
-    mkfs.fat -F32 -n "${CONFIG[EFI_PART]}"
+    mkfs.fat -F32 "${CONFIG[EFI_PART]}"
     mkfs.btrfs \
         -L "ROOT" \
         -n 16k \
