@@ -9,9 +9,7 @@
 set -exuo pipefail
 
 # Color codes
-RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
@@ -34,12 +32,11 @@ function init_config() {
 
     CONFIG=(
         [DRIVE]="/dev/nvme0n1"
-        [HOSTNAME]="localhost"
+        [HOSTNAME]="archost"
         [USERNAME]="c0d3h01"
         [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_IN.UTF-8"
-        [BTRFS_OPTS]="noatime,compress=zstd:1,ssd,space_cache=v2,discard=async,autodefrag"
     )
     CONFIG[EFI_PART]="${CONFIG[DRIVE]}p1"
     CONFIG[ROOT_PART]="${CONFIG[DRIVE]}p2"
@@ -47,31 +44,35 @@ function init_config() {
 
 # Logging functions
 function info() { echo -e "${BLUE}INFO: $* ${NC}"; }
-function warn() { echo -e "${YELLOW}WARN: $* ${NC}"; }
-function error() {
-    echo -e "${RED}ERROR: $* ${NC}" >&2
-    exit 1
-}
 function success() { echo -e "${GREEN}SUCCESS:$* ${NC}"; }
 
 function setup_disk() {
     # Wipe and prepare the disk
+    wipefs -af "${CONFIG[DRIVE]}"
     sgdisk --zap-all "${CONFIG[DRIVE]}"
+
+    # Create fresh GPT
+    sgdisk --clear "${CONFIG[DRIVE]}"
 
     # Create partitions
     sgdisk \
-        --new=1:0:+1g --typecode=1:ef00 --change-name=1:"EFI" \
+        --new=1:0:+1G --typecode=1:ef00 --change-name=1:"EFI" \
         --new=2:0:0 --typecode=2:8300 --change-name=2:"ROOT" \
         "${CONFIG[DRIVE]}"
 
     # Reload the partition table
     partprobe "${CONFIG[DRIVE]}"
+    sleep 2
 }
 
 function setup_filesystems() {
     # Format partitions
-    mkfs.fat -F32 "${CONFIG[EFI_PART]}"
-    mkfs.btrfs -f "${CONFIG[ROOT_PART]}"
+    mkfs.fat -F32 -n "${CONFIG[EFI_PART]}"
+    mkfs.btrfs \
+        -L "ROOT" \
+        -n 16k \
+        -f \
+        "${CONFIG[ROOT_PART]}"
 
     # Mount root partition temporarily
     mount "${CONFIG[ROOT_PART]}" /mnt
@@ -81,25 +82,23 @@ function setup_filesystems() {
     btrfs subvolume create /mnt/@home
     btrfs subvolume create /mnt/@cache
     btrfs subvolume create /mnt/@log
-    btrfs subvolume create /mnt/@swap
 
-    # Unmount and remount with options
+    # Unmount and remount with subvolumes
+    cd /
     umount /mnt
-    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@" "${CONFIG[ROOT_PART]}" /mnt
+
+    mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@ "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary directories
-    mkdir -p /mnt/{home,var/cache,var/log,boot/efi,swap}
+    mkdir -p /mnt/{home,var/cache,var/log,boot/efi}
 
     # Mount subvolumes
-    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@home" "${CONFIG[ROOT_PART]}" /mnt/home
-    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@cache" "${CONFIG[ROOT_PART]}" /mnt/var/cache
-    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@log" "${CONFIG[ROOT_PART]}" /mnt/var/log
-    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@swap" "${CONFIG[ROOT_PART]}" /mnt/swap
+    mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@home "${CONFIG[ROOT_PART]}" /mnt/home
+    mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@cache "${CONFIG[ROOT_PART]}" /mnt/var/cache
+    mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@log "${CONFIG[ROOT_PART]}" /mnt/var/log
 
     # Mount EFI partition
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
-
-    btrfs filesystem mkswapfile --size 16g --uuid clear /mnt/swap/swapfile
 }
 
 # Base system installation function
@@ -112,6 +111,8 @@ function install_base_system() {
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
+    sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
+
 
     # Refresh package databases
     pacman -Syy
@@ -119,7 +120,7 @@ function install_base_system() {
     local base_packages=(
         # Core System
         base base-devel
-        linux-firmware linux-zen
+        linux-firmware linux-lts
 
         # Filesystem
         btrfs-progs
@@ -128,22 +129,37 @@ function install_base_system() {
         # Boot
         grub
         efibootmgr
+        efitools
 
         # CPU & GPU Drivers
         amd-ucode
-        xorg-server
-        xorg-xinit
+        mesa
+        mesa-utils
         xf86-input-libinput
         xf86-video-amdgpu
-        
+        xf86-video-ati
+
+        # X Window System server
+        xorg
+
         # Network
         networkmanager
+        networkmanager-openconnect
+        networkmanager-openvpn
+        networkmanager-pptp
+        networkmanager-strongswan
+        networkmanager-vpnc
+        network-manager-sstp
+        nm-connection-editor
+        network-manager-applet
         wpa_supplicant
         dialog
+        ufw-extras
         
         # Multimedia & Bluetooth
         bluez
         bluez-utils
+        sof-firmware
         pipewire
         pipewire-pulse
         pipewire-alsa
@@ -151,12 +167,15 @@ function install_base_system() {
         wireplumber
 
         # Gnome
+        arc-gtk-theme
         rhythmbox
         loupe
         evince
         file-roller
+        nautilus
+        sushi
+        totem
         gdm
-        gnome-browser-connector
         gnome-calculator
         gnome-clocks
         gnome-console
@@ -167,20 +186,19 @@ function install_base_system() {
         gnome-power-manager
         gnome-screenshot
         gnome-shell
+        gnome-system-monitor
         gnome-terminal
         gnome-text-editor
         gnome-themes-extra
         gnome-tweaks
-        gnome-calendar
+        gnome-usage
+        gnome-weather
         gvfs
         gvfs-afc
         gvfs-gphoto2
         gvfs-mtp
         gvfs-nfs
         gvfs-smb
-        nautilus
-        sushi
-        totem
         xdg-desktop-portal-gnome
         xdg-desktop-portal
         xdg-user-dirs-gtk
@@ -192,7 +210,10 @@ function install_base_system() {
         ttf-liberation
 
         # Essential System Utilities
+        kitty
+        ethtool
         zstd
+        zram-generator
         thermald
         git
         reflector
@@ -200,36 +221,38 @@ function install_base_system() {
         nano
         neovim
         fastfetch
-        timeshift
-        snapper snap-pac
+        snapper
+        snap-pac
         xclip
+        xcolor
         laptop-detect
         flatpak
-        ufw-extras
         glances
-        power-profiles-daemon
-        earlyoom
-        ananicy-cpp
-
-        # User Utilities
-        kdeconnect
-        libreoffice-fresh
-        firefox
         wget
+        sshpass
+        openssh
+        nmap
+
+        # Development-tool
         gcc
         gdb
         cmake
         clang
-        nodejs
-        sshpass
-        openssh
         npm
-        nmap
+        nodejs
+        docker
+        docker-compose
         jupyterlab
-        docker docker-compose
         python
         python-virtualenv
         python-pip
+
+        # User Utilities
+        kdeconnect
+        wine
+        steam
+        telegram-desktop
+        libreoffice-fresh
     )
     pacstrap -K /mnt --needed "${base_packages[@]}"
 }
@@ -272,8 +295,9 @@ function configure_system() {
     # Configure sudo
     sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 
-    grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=Arch-GRUB
+    grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
     grub-mkconfig -o /boot/grub/grub.cfg
+    mkinitcpio -P
 EOF
 }
 
@@ -281,46 +305,17 @@ function apply_customization() {
 
     arch-chroot /mnt /bin/bash << 'EOF'
 
-    # Get the offset
-    SWAP_OFFSET=$(filefrag -v /swap/swapfile | awk '/ 0:/ {print $4}' | cut -d '.' -f 1)
-
-    RESUME_DEVICE=$(df /swap | awk 'NR==2 {print $1}')
-
-    # Modify GRUB with the correct device path
-    sed -i "/^GRUB_CMDLINE_LINUX=/s|\"$|resume=$RESUME_DEVICE resume_offset=$SWAP_OFFSET\"|" /etc/default/grub
-
-    echo "/swap/swapfile none swap defaults,pri=100 0 0" >> /etc/fstab
-
-    grub-mkconfig -o /boot/grub/grub.cfg
-    mkinitcpio -P
+    cat > "/etc/systemd/zram-generator.conf" << ZRAM
+[zram0]
+zram-size = ram * 2
+compression-algorithm = zstd
+priority = 100
+ZRAM
 
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
-
-    cat > "/etc/sysctl.conf" << SYS
-vm.swappiness=10
-vm.vfs_cache_pressure=50
-vm.dirty_background_ratio=5
-vm.dirty_ratio=10
-vm.dirty_writeback_centisecs=1500
-SYS
-
-    snapper -c root create-config /
-    snapper -c home create-config /home
-
-    cat > "/etc/snapper/configs/root" << SNAPR
-TIMELINE_CREATE=yes
-TIMELINE_LIMIT_HOURLY=2
-TIMELINE_LIMIT_DAILY=5
-SNAPR
-
-    cat > "/etc/snapper/configs/home" << SNAPH
-TIMELINE_CREATE=yes
-TIMELINE_LIMIT_HOURLY=1
-TIMELINE_LIMIT_DAILY=5
-SNAPH
 
     systemctl enable \
     NetworkManager \
@@ -328,22 +323,16 @@ SNAPH
     thermald \
     fstrim.timer \
     docker \
-    gdm \
-    earlyoom \
-    ananicy-cpp \
-    power-profiles-daemon
-
-    # systemctl --user enable --now \
-    # pipewire.service \
-    # pipewire-pulse.service \
-    # wireplumber.service
+    gdm
 
     # Configure Docker
     usermod -aG docker "$USER"
-
-    git config --global user.name "c0d3h01"
-    git config --global user.email "harshalsawant2004h@gmail.com"
 EOF
+
+    pacman -Sy --noconfirm snapper snap-pac
+    snapper -c root create-config /mnt/
+    snapper -c home create-config /mnt/home
+
 }
 
 function main() {
