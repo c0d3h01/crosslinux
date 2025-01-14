@@ -167,7 +167,6 @@ function install_base_system() {
         wireplumber
 
         # Gnome
-        arc-gtk-theme
         rhythmbox
         loupe
         evince
@@ -189,10 +188,7 @@ function install_base_system() {
         gnome-system-monitor
         gnome-terminal
         gnome-text-editor
-        gnome-themes-extra
         gnome-tweaks
-        gnome-usage
-        gnome-weather
         gvfs
         gvfs-afc
         gvfs-gphoto2
@@ -224,7 +220,6 @@ function install_base_system() {
         snapper
         snap-pac
         xclip
-        xcolor
         laptop-detect
         flatpak
         glances
