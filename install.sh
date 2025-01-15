@@ -129,7 +129,7 @@ function install_base_system() {
         efibootmgr
         efitools
 
-        # CPU & GPU Drivers and X
+        # CPU & GPU Drivers
         amd-ucode
         mesa
         mesa-utils
@@ -139,21 +139,11 @@ function install_base_system() {
         vulkan-mesa-layers
         vulkan-radeon
         vulkan-tools
-        xorg-server
-        xorg-xdpyinfo
-        xorg-xinit
-        xorg-xinput
-        xorg-xkill
-        xorg-xrandr
 
         # Network
         networkmanager
-        networkmanager-openconnect
-        networkmanager-openvpn
         wpa_supplicant
         bind
-        netctl
-        net-tools
         ufw-extras
     
         # Multimedia & Bluetooth
@@ -170,38 +160,9 @@ function install_base_system() {
         wireplumber
 
         # Gnome
-        power-profiles-daemon
-        rhythmbox
-        loupe
-        evince
-        file-roller
-        nautilus
-        sushi
-        totem
-        gdm
-        gnome-calculator
-        gnome-clocks
-        gnome-console
-        gnome-control-center
-        gnome-disk-utility
-        gnome-keyring
-        gnome-nettool
-        gnome-power-manager
-        gnome-screenshot
-        gnome-shell
-        gnome-system-monitor
-        gnome-terminal
-        gnome-text-editor
+        gnome
         gnome-tweaks
-        gvfs
-        gvfs-afc
-        gvfs-gphoto2
-        gvfs-mtp
-        gvfs-nfs
-        gvfs-smb
-        xdg-desktop-portal-gnome
-        xdg-desktop-portal
-        xdg-user-dirs-gtk
+        gnome-terminal
 
         # Fonts
         noto-fonts
@@ -227,7 +188,6 @@ function install_base_system() {
         git
         reflector
         pacutils
-        nano
         neovim
         fastfetch
         snapper
@@ -242,14 +202,6 @@ function install_base_system() {
         openssh
         nmap
         inxi
-        dnsutils
-        doas
-        hddtemp
-        ipmitool
-        freeipmi
-        lvm2
-        wayland-utils
-        wmctrl
 
         # Development-tool
         gcc
