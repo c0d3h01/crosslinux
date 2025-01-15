@@ -111,8 +111,6 @@ function install_base_system() {
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
-    sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
-
 
     # Refresh package databases
     pacman -Syy
@@ -138,6 +136,8 @@ function install_base_system() {
         xf86-input-libinput
         xf86-video-amdgpu
         xf86-video-ati
+        vulkan-mesa-layers
+        vulkan-radeon
         xorg-server
         xorg-xdpyinfo
         xorg-xinit
@@ -147,10 +147,10 @@ function install_base_system() {
 
         # Network
         networkmanager
+        networkmanager-openconnect
+        networkmanager-openvpn
         wpa_supplicant
-        dialog
-        ufw-extras
-        
+    
         # Multimedia & Bluetooth
         bluez
         bluez-utils
@@ -159,9 +159,13 @@ function install_base_system() {
         pipewire-pulse
         pipewire-alsa
         pipewire-jack
+        gst-plugin-pipewire
+        gst-plugins-base
+        gst-plugins-good
         wireplumber
 
         # Gnome
+        power-profiles-daemon
         rhythmbox
         loupe
         evince
@@ -199,8 +203,19 @@ function install_base_system() {
         noto-fonts-emoji
         ttf-dejavu
         ttf-liberation
+        terminus-font
+
+        # ZShell
+        zsh
+        zsh-autosuggestions
+        zsh-completions
+        zsh-syntax-highlighting
 
         # Essential System Utilities
+        bind
+        ibus-typing-booster
+        ufw-extras
+        dialog
         kitty
         ethtool
         zstd
@@ -325,7 +340,8 @@ ZRAM
     thermald \
     fstrim.timer \
     docker \
-    gdm
+    gdm \
+    power-profiles-daemon
 
     # Configure Docker
     usermod -aG docker "$USER"
