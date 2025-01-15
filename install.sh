@@ -138,6 +138,7 @@ function install_base_system() {
         xf86-video-ati
         vulkan-mesa-layers
         vulkan-radeon
+        vulkan-tools
         xorg-server
         xorg-xdpyinfo
         xorg-xinit
@@ -150,6 +151,10 @@ function install_base_system() {
         networkmanager-openconnect
         networkmanager-openvpn
         wpa_supplicant
+        bind
+        netctl
+        net-tools
+        ufw-extras
     
         # Multimedia & Bluetooth
         bluez
@@ -212,9 +217,7 @@ function install_base_system() {
         zsh-syntax-highlighting
 
         # Essential System Utilities
-        bind
         ibus-typing-booster
-        ufw-extras
         dialog
         kitty
         ethtool
@@ -234,21 +237,19 @@ function install_base_system() {
         flatpak
         glances
         wget
+        curl
         sshpass
         openssh
         nmap
         inxi
-        bluez-utils
         dnsutils
         doas
         hddtemp
-        net-tools
         ipmitool
         freeipmi
         lvm2
-        vulkan-tools
         wayland-utils
-        wmctrl 
+        wmctrl
 
         # Development-tool
         gcc
@@ -265,6 +266,7 @@ function install_base_system() {
         python-pip
 
         # User Utilities
+        firefox
         kdeconnect
         wine
         steam
