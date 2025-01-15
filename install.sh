@@ -131,14 +131,13 @@ function install_base_system() {
 
         # CPU & GPU Drivers
         amd-ucode
+        libva-mesa-driver
         mesa
-        mesa-utils
-        xf86-input-libinput
+        vulkan-radeon
         xf86-video-amdgpu
         xf86-video-ati
-        vulkan-mesa-layers
-        vulkan-radeon
-        vulkan-tools
+        xorg-server
+        xorg-xinit
 
         # Network
         networkmanager
@@ -154,13 +153,15 @@ function install_base_system() {
         pipewire-pulse
         pipewire-alsa
         pipewire-jack
-        gst-plugin-pipewire
-        gst-plugins-base
-        gst-plugins-good
         wireplumber
 
         # Gnome
+        loupe
+        evince
+        file-roller
         gdm
+        gnome-settings-daemon
+        gnome-session 
         gnome-calculator
         gnome-clocks
         gnome-console
@@ -169,29 +170,29 @@ function install_base_system() {
         gnome-keyring
         gnome-nettool
         gnome-power-manager
-        gnome-themes-extra
         gnome-screenshot
         gnome-shell
         gnome-system-monitor
         gnome-terminal
         gnome-text-editor
+        gnome-themes-extra
+        gnome-tweaks
+        gnome-usage
+        gnome-maps
+        gnome-weather
         gvfs
         gvfs-afc
         gvfs-gphoto2
         gvfs-mtp
         gvfs-nfs
         gvfs-smb
-        xdg-desktop-portal-gnome
-        xdg-desktop-portal
-        xdg-user-dirs-gtk
-        power-profiles-daemon
-        rhythmbox
-        loupe
-        evince
-        file-roller
         nautilus
         sushi
         totem
+        xdg-desktop-portal-gnome
+        xdg-user-dirs-gtk
+        power-profiles-daemon
+        rhythmbox
 
         # Fonts
         noto-fonts
