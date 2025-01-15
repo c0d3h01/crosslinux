@@ -160,9 +160,38 @@ function install_base_system() {
         wireplumber
 
         # Gnome
-        gnome
-        gnome-tweaks
+        gdm
+        gnome-calculator
+        gnome-clocks
+        gnome-console
+        gnome-control-center
+        gnome-disk-utility
+        gnome-keyring
+        gnome-nettool
+        gnome-power-manager
+        gnome-themes-extra
+        gnome-screenshot
+        gnome-shell
+        gnome-system-monitor
         gnome-terminal
+        gnome-text-editor
+        gvfs
+        gvfs-afc
+        gvfs-gphoto2
+        gvfs-mtp
+        gvfs-nfs
+        gvfs-smb
+        xdg-desktop-portal-gnome
+        xdg-desktop-portal
+        xdg-user-dirs-gtk
+        power-profiles-daemon
+        rhythmbox
+        loupe
+        evince
+        file-roller
+        nautilus
+        sushi
+        totem
 
         # Fonts
         noto-fonts
