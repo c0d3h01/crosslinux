@@ -105,7 +105,11 @@ function setup_filesystems() {
 function install_base_system() {
     info "Installing base system..."
 
-    reflector --country India --age 6 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+    # reflector --country India --age 6 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+
+    cat > "/etc/pacman.d/mirrorlist" << MIRR
+Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
+MIRR
 
     # Pacman configure for arch-iso
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
