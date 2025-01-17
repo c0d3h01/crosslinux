@@ -6,7 +6,7 @@
 # Automated Arch Linux Installation Personal Setup Script
 # ==============================================================================
 
-set -exuo pipefail
+set -euo pipefail
 
 # Color codes
 GREEN='\033[0;32m'
@@ -105,6 +105,7 @@ function setup_filesystems() {
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
 
     # Create swapfile
+    info "Creating swapfile..."
     btrfs filesystem mkswapfile --size 6G /mnt/swap/swapfile
     swapon /mnt/swap/swapfile
 }
@@ -113,8 +114,10 @@ function setup_filesystems() {
 function install_base_system() {
     info "Installing base system..."
 
+    info "Running reflctor..."
     reflector --country India --age 6 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
-
+    
+    info "Configuring pacman for iso installaton..."
     # Pacman configure for arch-iso
     sed -i 's/^#ParallelDownloads = 5/ParallelDownloads = 10/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout' /etc/pacman.conf
@@ -162,6 +165,7 @@ function install_base_system() {
         wireplumber
 
         # Gnome
+        adwaita-icon-theme
         loupe
         evince
         file-roller
@@ -183,8 +187,7 @@ function install_base_system() {
         gnome-themes-extra
         gnome-tweaks
         gnome-usage
-        gst-plugins-good
-        gst-plugins-base
+        gnome-logs
         gvfs
         gvfs-afc
         gvfs-gphoto2
@@ -243,7 +246,6 @@ function install_base_system() {
         python-pip
 
         # User Utilities
-        firefox
         kdeconnect
         discord
         wine
@@ -297,13 +299,8 @@ function configure_system() {
     grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
     grub-mkconfig -o /boot/grub/grub.cfg
     mkinitcpio -P
-EOF
-}
 
-function apply_customization() {
-
-    arch-chroot /mnt /bin/bash << 'EOF'
-
+    # Enable swap on boot
     echo '/swap/swapfile none swap defaults 0 0' >> /etc/fstab
 
     sed -i 's/^#ParallelDownloads = 5/ParallelDownloads = 10/' /etc/pacman.conf
@@ -311,15 +308,12 @@ function apply_customization() {
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
-    systemctl enable \
-    NetworkManager \
-    bluetooth \
-    fstrim.timer \
-    docker \
-    gdm
+    # Enable services...
+    systemctl enable NetworkManager bluetooth fstrim.timer docker gdm snapper-timeline.timer
 
     # Configure Docker
     usermod -aG docker "$USER"
+
 EOF
 }
 
@@ -332,7 +326,6 @@ function main() {
     setup_filesystems
     install_base_system
     configure_system
-    apply_customization
     umount -R /mnt
     success "Installation completed! You can now reboot your system."
 }
