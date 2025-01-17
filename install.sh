@@ -82,6 +82,8 @@ function setup_filesystems() {
     btrfs subvolume create /mnt/@home
     btrfs subvolume create /mnt/@cache
     btrfs subvolume create /mnt/@log
+    btrfs subvolume create /mnt/@swap
+    btrfs subvolume create /mnt/@snapshots
 
     # Unmount and remount with subvolumes
     cd /
@@ -90,15 +92,21 @@ function setup_filesystems() {
     mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@ "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary directories
-    mkdir -p /mnt/{home,var/cache,var/log,boot/efi}
+    mkdir -p /mnt/{home,var/cache,var/log,boot/efi,.snapshots,swap}
 
     # Mount subvolumes
     mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@home "${CONFIG[ROOT_PART]}" /mnt/home
     mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@cache "${CONFIG[ROOT_PART]}" /mnt/var/cache
     mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@log "${CONFIG[ROOT_PART]}" /mnt/var/log
+    mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@log "${CONFIG[ROOT_PART]}" /mnt/swap
+    mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@snapshots "${CONFIG[ROOT_PART]}" /mnt/var/.snapshots
 
     # Mount EFI partition
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
+
+    # Create swapfile
+    btrfs filesystem mkswapfile --size 6G /mnt/swap/swapfile
+    swapon /mnt/swap/swapfile
 }
 
 # Base system installation function
@@ -118,7 +126,8 @@ function install_base_system() {
     local base_packages=(
         # Core System
         base base-devel
-        linux-firmware linux-lts
+        linux-firmware 
+        linux-lts linux-lts-headers
 
         # Filesystem
         btrfs-progs
@@ -141,9 +150,8 @@ function install_base_system() {
 
         # Network
         networkmanager
-        wpa_supplicant
         bind
-        ufw-extras
+        ufw
     
         # Multimedia & Bluetooth
         bluez
@@ -174,12 +182,11 @@ function install_base_system() {
         gnome-shell
         gnome-system-monitor
         gnome-terminal
-        gnome-text-editor
         gnome-themes-extra
         gnome-tweaks
         gnome-usage
-        gnome-maps
-        gnome-weather
+        gst-plugins-good
+        gst-plugins-base
         gvfs
         gvfs-afc
         gvfs-gphoto2
@@ -191,8 +198,8 @@ function install_base_system() {
         totem
         xdg-desktop-portal-gnome
         xdg-user-dirs-gtk
-        power-profiles-daemon
         rhythmbox
+        micro
 
         # Fonts
         noto-fonts
@@ -201,27 +208,16 @@ function install_base_system() {
         ttf-liberation
         terminus-font
 
-        # ZShell
-        zsh
-        zsh-autosuggestions
-        zsh-completions
-        zsh-syntax-highlighting
-
         # Essential System Utilities
         ibus-typing-booster
         dialog
-        kitty
-        ethtool
-        zstd
-        zram-generator
         thermald
         git
         reflector
         pacutils
         neovim
         fastfetch
-        snapper
-        snap-pac
+        snapper snap-pac
         xclip
         laptop-detect
         flatpak
@@ -242,6 +238,7 @@ function install_base_system() {
         nodejs
         docker
         docker-compose
+        openjdk-src
         jupyterlab
         python
         python-virtualenv
@@ -250,8 +247,10 @@ function install_base_system() {
         # User Utilities
         firefox
         kdeconnect
+        discord
         wine
         steam
+        zed
         telegram-desktop
         libreoffice-fresh
     )
@@ -306,12 +305,7 @@ function apply_customization() {
 
     arch-chroot /mnt /bin/bash << 'EOF'
 
-    cat > "/etc/systemd/zram-generator.conf" << ZRAM
-[zram0]
-zram-size = ram * 2
-compression-algorithm = zstd
-priority = 100
-ZRAM
+    echo '/swap/swapfile none swap defaults 0 0' >> /etc/fstab
 
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
@@ -324,8 +318,7 @@ ZRAM
     thermald \
     fstrim.timer \
     docker \
-    gdm \
-    power-profiles-daemon
+    gdm
 
     # Configure Docker
     usermod -aG docker "$USER"
