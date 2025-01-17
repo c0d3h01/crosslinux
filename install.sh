@@ -116,7 +116,7 @@ function install_base_system() {
     reflector --country India --age 6 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
 
     # Pacman configure for arch-iso
-    sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
+    sed -i 's/^#ParallelDownloads = 5/ParallelDownloads = 10/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
@@ -126,8 +126,8 @@ function install_base_system() {
     local base_packages=(
         # Core System
         base base-devel
-        linux-firmware 
-        linux-lts linux-lts-headers
+        linux-firmware
+        linux-lts
 
         # Filesystem
         btrfs-progs
@@ -136,7 +136,6 @@ function install_base_system() {
         # Boot
         grub
         efibootmgr
-        efitools
 
         # CPU & GPU Drivers
         amd-ucode
@@ -150,7 +149,6 @@ function install_base_system() {
 
         # Network
         networkmanager
-        bind
         ufw
     
         # Multimedia & Bluetooth
@@ -211,13 +209,13 @@ function install_base_system() {
         # Essential System Utilities
         ibus-typing-booster
         dialog
-        thermald
         git
         reflector
         pacutils
         neovim
         fastfetch
-        snapper snap-pac
+        snapper
+        snap-pac
         xclip
         laptop-detect
         flatpak
@@ -250,7 +248,7 @@ function install_base_system() {
         discord
         wine
         steam
-        zed
+        code
         telegram-desktop
         libreoffice-fresh
         linutil
@@ -308,7 +306,7 @@ function apply_customization() {
 
     echo '/swap/swapfile none swap defaults 0 0' >> /etc/fstab
 
-    sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
+    sed -i 's/^#ParallelDownloads = 5/ParallelDownloads = 10/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
@@ -316,7 +314,6 @@ function apply_customization() {
     systemctl enable \
     NetworkManager \
     bluetooth \
-    thermald \
     fstrim.timer \
     docker \
     gdm
