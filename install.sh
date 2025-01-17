@@ -32,7 +32,7 @@ function init_config() {
 
     CONFIG=(
         [DRIVE]="/dev/nvme0n1"
-        [HOSTNAME]="archost"
+        [HOSTNAME]="localhost"
         [USERNAME]="c0d3h01"
         [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
@@ -82,7 +82,6 @@ function setup_filesystems() {
     btrfs subvolume create /mnt/@home
     btrfs subvolume create /mnt/@cache
     btrfs subvolume create /mnt/@log
-    btrfs subvolume create /mnt/@swap
     btrfs subvolume create /mnt/@snapshots
 
     # Unmount and remount with subvolumes
@@ -92,13 +91,12 @@ function setup_filesystems() {
     mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@ "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary directories
-    mkdir -p /mnt/{home,var/cache,var/log,boot/efi,.snapshots,swap}
+    mkdir -p /mnt/{home,var/cache,var/log,boot/efi,.snapshots}
 
     # Mount subvolumes
     mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@home "${CONFIG[ROOT_PART]}" /mnt/home
     mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@cache "${CONFIG[ROOT_PART]}" /mnt/var/cache
     mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@log "${CONFIG[ROOT_PART]}" /mnt/var/log
-    mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@swap "${CONFIG[ROOT_PART]}" /mnt/swap
     mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@snapshots "${CONFIG[ROOT_PART]}" /mnt/.snapshots
 
     # Mount EFI partition
@@ -106,8 +104,7 @@ function setup_filesystems() {
 
     # Create swapfile
     info "Creating swapfile..."
-    btrfs filesystem mkswapfile --size 6G /mnt/swap/swapfile
-    swapon /mnt/swap/swapfile
+    btrfs filesystem mkswapfile --size 12G /mnt/swapfile
 }
 
 # Base system installation function
@@ -157,7 +154,6 @@ function install_base_system() {
         # Multimedia & Bluetooth
         bluez
         bluez-utils
-        sof-firmware
         pipewire
         pipewire-pulse
         pipewire-alsa
@@ -249,8 +245,6 @@ function install_base_system() {
         kdeconnect
         discord
         wine
-        steam
-        code
         telegram-desktop
         libreoffice-fresh
     )
@@ -299,16 +293,13 @@ function configure_system() {
     grub-mkconfig -o /boot/grub/grub.cfg
     mkinitcpio -P
 
-    # Enable swap on boot
-    echo '/swap/swapfile none swap defaults 0 0' >> /etc/fstab
-
     sed -i 's/^#ParallelDownloads = 5/ParallelDownloads = 10/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
     # Enable services...
-    systemctl enable NetworkManager bluetooth fstrim.timer docker gdm snapper-timeline.timer
+    systemctl enable NetworkManager bluetooth fstrim.timer docker gdm
 
     # Configure Docker
     usermod -aG docker "$USER"
