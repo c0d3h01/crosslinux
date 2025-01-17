@@ -82,7 +82,6 @@ function setup_filesystems() {
     btrfs subvolume create /mnt/@home
     btrfs subvolume create /mnt/@cache
     btrfs subvolume create /mnt/@log
-    btrfs subvolume create /mnt/@snapshots
 
     # Unmount and remount with subvolumes
     cd /
@@ -91,13 +90,12 @@ function setup_filesystems() {
     mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@ "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary directories
-    mkdir -p /mnt/{home,var/cache,var/log,boot/efi,.snapshots}
+    mkdir -p /mnt/{home,var/cache,var/log,boot/efi,}
 
     # Mount subvolumes
     mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@home "${CONFIG[ROOT_PART]}" /mnt/home
     mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@cache "${CONFIG[ROOT_PART]}" /mnt/var/cache
     mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@log "${CONFIG[ROOT_PART]}" /mnt/var/log
-    mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@snapshots "${CONFIG[ROOT_PART]}" /mnt/.snapshots
 
     # Mount EFI partition
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
@@ -213,8 +211,7 @@ function install_base_system() {
         pacutils
         neovim
         fastfetch
-        snapper
-        snap-pac
+        timeshift
         xclip
         laptop-detect
         flatpak
@@ -242,7 +239,6 @@ function install_base_system() {
         python-pip
 
         # User Utilities
-        kdeconnect
         discord
         wine
         telegram-desktop
@@ -303,6 +299,8 @@ function configure_system() {
 
     # Configure Docker
     usermod -aG docker "$USER"
+
+    sudo ufw enable
 
 EOF
 }
