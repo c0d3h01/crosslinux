@@ -98,7 +98,7 @@ function setup_filesystems() {
     mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@home "${CONFIG[ROOT_PART]}" /mnt/home
     mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@cache "${CONFIG[ROOT_PART]}" /mnt/var/cache
     mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@log "${CONFIG[ROOT_PART]}" /mnt/var/log
-    mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@log "${CONFIG[ROOT_PART]}" /mnt/swap
+    mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@swap "${CONFIG[ROOT_PART]}" /mnt/swap
     mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@snapshots "${CONFIG[ROOT_PART]}" /mnt/.snapshots
 
     # Mount EFI partition
