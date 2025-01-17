@@ -253,7 +253,6 @@ function install_base_system() {
         code
         telegram-desktop
         libreoffice-fresh
-        linutil
     )
     pacstrap -K /mnt --needed "${base_packages[@]}"
 }
