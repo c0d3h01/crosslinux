@@ -100,9 +100,9 @@ function setup_filesystems() {
     # Mount EFI partition
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
 
-    # Create swapfile
-    info "Creating swapfile..."
-    btrfs filesystem mkswapfile --size 12G /mnt/swapfile
+    # # Create swapfile
+    # info "Creating swapfile..."
+    # btrfs filesystem mkswapfile --size 4G /mnt/swapfile
 }
 
 # Base system installation function
@@ -126,6 +126,7 @@ function install_base_system() {
         base base-devel
         linux-firmware
         linux-lts
+        zram-generator
 
         # Filesystem
         btrfs-progs
@@ -301,6 +302,24 @@ function configure_system() {
     usermod -aG docker "$USER"
 
     sudo ufw enable
+
+    cat > "/etc/sysctl.d/99-optimizations.conf" << OPT
+vm.swappiness = 180
+vm.watermark_boost_factor = 0
+vm.watermark_scale_factor = 125
+vm.page-cluster = 0
+OPT
+
+    cat > "/etc/systemd/zram-generator.conf" << ZRAM
+[zram0]
+zram-size = ram
+compression-algorithm = zstd
+swap-priority = 100
+ZRAM
+
+    cat > "/etc/udev/rules.d/99-zram.rules" << ZRULE
+ACTION=="add", KERNEL=="zram0", ATTR{comp_algorithm}="zstd", ATTR{disksize}="4G", RUN="/usr/bin/mkswap -U clear /dev/%k", TAG+="systemd"
+ZRULE
 
 EOF
 }
