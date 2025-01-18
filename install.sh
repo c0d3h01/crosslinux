@@ -317,10 +317,6 @@ compression-algorithm = zstd
 swap-priority = 100
 ZRAM
 
-    cat > "/etc/udev/rules.d/99-zram.rules" << ZRULE
-ACTION=="add", KERNEL=="zram0", ATTR{comp_algorithm}="zstd", ATTR{disksize}="4G", RUN="/usr/bin/mkswap -U clear /dev/%k", TAG+="systemd"
-ZRULE
-
 EOF
 }
 
