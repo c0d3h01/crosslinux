@@ -224,6 +224,8 @@ function install_base_system() {
         nmap
         inxi
         ananicy-cpp
+        tlp
+        tlp-rdw
 
         # Development-tool
         gcc
@@ -306,7 +308,7 @@ function configure_system() {
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
     # Enable services...
-    systemctl enable NetworkManager bluetooth fstrim.timer docker gdm ananicy-cpp firewalld
+    systemctl enable NetworkManager bluetooth fstrim.timer docker gdm ananicy-cpp firewalld tlp
 
     # Configure Docker
     usermod -aG docker "$USER"
