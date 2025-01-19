@@ -308,7 +308,7 @@ function configure_system() {
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
     # Enable services...
-    systemctl enable NetworkManager bluetooth fstrim.timer docker gdm ananicy-cpp firewalld tlp
+    systemctl enable NetworkManager bluetooth fstrim.timer gdm ananicy-cpp firewalld tlp
 
     # Configure Docker
     usermod -aG docker "$USER"
