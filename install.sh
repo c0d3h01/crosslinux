@@ -100,9 +100,9 @@ function setup_filesystems() {
     # Mount EFI partition
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
 
-    # # Create swapfile
-    # info "Creating swapfile..."
-    # btrfs filesystem mkswapfile --size 4G /mnt/swapfile
+    # Create swapfile
+    info "Creating swapfile..."
+    btrfs filesystem mkswapfile --size $(free -b | awk '/^Mem:/{print $2}') /mnt/swapfile
 }
 
 # Base system installation function
@@ -126,7 +126,7 @@ function install_base_system() {
         base base-devel
         linux-firmware
         linux-lts
-        zram-generator
+        linux
 
         # Filesystem
         btrfs-progs
@@ -148,7 +148,7 @@ function install_base_system() {
 
         # Network
         networkmanager
-        ufw
+        firewalld
     
         # Multimedia & Bluetooth
         bluez
@@ -223,6 +223,7 @@ function install_base_system() {
         openssh
         nmap
         inxi
+        ananicy-cpp
 
         # Development-tool
         gcc
@@ -250,6 +251,15 @@ function install_base_system() {
 
 # System configuration function
 function configure_system() {
+
+    info "Configuring swap hibernation with resume offset..."
+
+    # Get the swap offset
+    SWAP_OFFSET=$(filefrag -v /mnt/swapfile | awk '/ 0:/ {print $4}' | cut -d '.' -f 1)
+    sed -i "/^GRUB_CMDLINE_LINUX=/s|\"$| resume=/dev/nvme0n1p2 resume_offset=${SWAP_OFFSET}\"|" /mnt/etc/default/grub
+    sed -i 's/^HOOKS=(.*)/HOOKS=(base udev autodetect modconf block filesystems keyboard fsck resume)/' /mnt/etc/mkinitcpio.conf
+    echo "/swapfile none swap defaults 0 0" >> /mnt/etc/fstab
+
     info "Configuring system..."
 
     # Generate fstab
@@ -296,27 +306,12 @@ function configure_system() {
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
     # Enable services...
-    systemctl enable NetworkManager bluetooth fstrim.timer docker gdm
+    systemctl enable NetworkManager bluetooth fstrim.timer docker gdm ananicy-cpp firewalld
 
     # Configure Docker
     usermod -aG docker "$USER"
 
-    sudo ufw enable
-
-    cat > "/etc/sysctl.d/99-optimizations.conf" << OPT
-vm.swappiness = 180
-vm.watermark_boost_factor = 0
-vm.watermark_scale_factor = 125
-vm.page-cluster = 0
-OPT
-
-    cat > "/etc/systemd/zram-generator.conf" << ZRAM
-[zram0]
-zram-size = ram
-compression-algorithm = zstd
-swap-priority = 100
-ZRAM
-
+    reflector --country India --age 6 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
 EOF
 }
 
