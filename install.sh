@@ -102,7 +102,7 @@ function setup_filesystems() {
 
     # Create swapfile
     info "Creating swapfile..."
-    btrfs filesystem mkswapfile --size $(free -b | awk '/^Mem:/{print $2}') /mnt/swapfile
+    btrfs filesystem mkswapfile --size $(($(free -b | awk '/^Mem:/{print $2}') * 2)) /mnt/swapfile
 }
 
 # Base system installation function
