@@ -32,14 +32,15 @@ function init_config() {
 
     CONFIG=(
         [DRIVE]="/dev/nvme0n1"
-        [HOSTNAME]="localhost"
+        [HOSTNAME]="archlinux"
         [USERNAME]="c0d3h01"
         [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_IN.UTF-8"
     )
     CONFIG[EFI_PART]="${CONFIG[DRIVE]}p1"
-    CONFIG[ROOT_PART]="${CONFIG[DRIVE]}p2"
+    CONFIG[BOOT_PART]="${CONFIG[DRIVE]}p2"
+    CONFIG[ROOT_PART]="${CONFIG[DRIVE]}p3"
 }
 
 # Logging functions
@@ -56,8 +57,9 @@ function setup_disk() {
 
     # Create partitions
     sgdisk \
-        --new=1:0:+1G --typecode=1:ef00 --change-name=1:"EFI" \
-        --new=2:0:0 --typecode=2:8300 --change-name=2:"ROOT" \
+        --new=1:0:+512M --typecode=1:ef00 --change-name=1:"EFI" \
+        --new=2:0:+1G --typecode=2:8300 --change-name=2:"BOOT" \
+        --new=3:0:0 --typecode=3:8300 --change-name=3:"ROOT" \
         "${CONFIG[DRIVE]}"
 
     # Reload the partition table
@@ -68,41 +70,31 @@ function setup_disk() {
 function setup_filesystems() {
     # Format partitions
     mkfs.fat -F32 "${CONFIG[EFI_PART]}"
-    mkfs.btrfs \
-        -L "ROOT" \
-        -n 16k \
-        -f \
-        "${CONFIG[ROOT_PART]}"
+    mkfs.ext4 -L "BOOT" "${CONFIG[BOOT_PART]}"
+    mkfs.btrfs -L "ROOT" -n 16k -f "${CONFIG[ROOT_PART]}"
 
     # Mount root partition temporarily
     mount "${CONFIG[ROOT_PART]}" /mnt
 
     # Create subvolumes
     btrfs subvolume create /mnt/@
+    btrfs subvolume create /mnt/@root
     btrfs subvolume create /mnt/@home
-    btrfs subvolume create /mnt/@cache
-    btrfs subvolume create /mnt/@log
 
     # Unmount and remount with subvolumes
-    cd /
     umount /mnt
-
-    mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@ "${CONFIG[ROOT_PART]}" /mnt
+    mount -o subvol=@,compress=zstd:1 "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary directories
-    mkdir -p /mnt/{home,var/cache,var/log,boot/efi,}
+    mkdir -p /mnt/{home,root,boot,boot/efi}
 
     # Mount subvolumes
-    mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@home "${CONFIG[ROOT_PART]}" /mnt/home
-    mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@cache "${CONFIG[ROOT_PART]}" /mnt/var/cache
-    mount -o noatime,compress=zstd:1,space_cache=v2,discard=async,ssd,subvol=@log "${CONFIG[ROOT_PART]}" /mnt/var/log
+    mount -o subvol=@root,compress=zstd:1 "${CONFIG[ROOT_PART]}" /mnt/root
+    mount -o subvol=@home,compress=zstd:1 "${CONFIG[ROOT_PART]}" /mnt/home
 
-    # Mount EFI partition
+    # Mount BOOT and EFI partitions
+    mount "${CONFIG[BOOT_PART]}" /mnt/boot
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
-
-    # Create swapfile
-    info "Creating swapfile..."
-    btrfs filesystem mkswapfile --size $(($(free -b | awk '/^Mem:/{print $2}') * 2)) /mnt/swapfile
 }
 
 # Base system installation function
@@ -114,7 +106,7 @@ function install_base_system() {
     
     info "Configuring pacman for iso installaton..."
     # Pacman configure for arch-iso
-    sed -i 's/^#ParallelDownloads = 5/ParallelDownloads = 10/' /etc/pacman.conf
+    sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
@@ -131,6 +123,7 @@ function install_base_system() {
         # Filesystem
         btrfs-progs
         dosfstools
+        zram-generator
 
         # Boot
         grub
@@ -148,7 +141,6 @@ function install_base_system() {
 
         # Network
         networkmanager
-        firewalld
     
         # Multimedia & Bluetooth
         bluez
@@ -160,7 +152,8 @@ function install_base_system() {
         wireplumber
 
         # Gnome
-        adwaita-icon-theme
+        arc-gtk-theme
+        papirus-icon-theme
         loupe
         evince
         file-roller
@@ -206,15 +199,15 @@ function install_base_system() {
 
         # Essential System Utilities
         ibus-typing-booster
-        dialog
+        qjournalctl
         git
         reflector
         pacutils
         neovim
         fastfetch
-        timeshift
+        snapper
+        snap-pac
         xclip
-        laptop-detect
         flatpak
         glances
         wget
@@ -224,8 +217,6 @@ function install_base_system() {
         nmap
         inxi
         ananicy-cpp
-        tlp
-        tlp-rdw
 
         # Development-tool
         gcc
@@ -248,19 +239,11 @@ function install_base_system() {
         telegram-desktop
         libreoffice-fresh
     )
-    pacstrap -K /mnt --needed "${base_packages[@]}"
+    pacstrap -K -i /mnt --needed "${base_packages[@]}"
 }
 
 # System configuration function
 function configure_system() {
-
-    info "Configuring swap hibernation with resume offset..."
-
-    # Get the swap offset
-    SWAP_OFFSET=$(filefrag -v /mnt/swapfile | awk '/ 0:/ {print $4}' | cut -d '.' -f 1)
-    sed -i "/^GRUB_CMDLINE_LINUX=/s|\"$| resume=/dev/nvme0n1p2 resume_offset=${SWAP_OFFSET}\"|" /mnt/etc/default/grub
-    sed -i 's/^HOOKS=(.*)/HOOKS=(base udev autodetect modconf block filesystems keyboard fsck resume)/' /mnt/etc/mkinitcpio.conf
-    echo "/swapfile none swap defaults 0 0" >> /mnt/etc/fstab
 
     info "Configuring system..."
 
@@ -302,18 +285,26 @@ function configure_system() {
     grub-mkconfig -o /boot/grub/grub.cfg
     mkinitcpio -P
 
-    sed -i 's/^#ParallelDownloads = 5/ParallelDownloads = 10/' /etc/pacman.conf
+    sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
     # Enable services...
-    systemctl enable NetworkManager bluetooth fstrim.timer gdm ananicy-cpp firewalld tlp
+    systemctl enable NetworkManager bluetooth fstrim.timer gdm ananicy-cpp
 
     # Configure Docker
     usermod -aG docker "$USER"
 
-    reflector --country India --age 6 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+    cat > "/usr/lib/systemd/zram-generator.conf" << ZRAM
+[zram0] 
+compression-algorithm = zstd lz4 (type=huge)
+zram-size = ram * 2
+swap-priority = 100
+fs-type = swap
+ZRAM
+
+    reflector --country India --age 10 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
 EOF
 }
 
