@@ -235,6 +235,7 @@ function install_base_system() {
 
         # User Utilities
         discord
+        transmission-gtk
         wine
         telegram-desktop
         libreoffice-fresh
@@ -298,7 +299,7 @@ function configure_system() {
 
     cat > "/usr/lib/systemd/zram-generator.conf" << ZRAM
 [zram0] 
-compression-algorithm = zstd lz4 (type=huge)
+compression-algorithm = zstd lz4
 zram-size = ram * 2
 swap-priority = 100
 fs-type = swap
