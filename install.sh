@@ -89,8 +89,8 @@ function setup_filesystems() {
     mkdir -p /mnt/home /mnt/root /mnt/boot/efi
 
     # Mount subvolumes
-    mount -o subvol=@root,compress=zstd:1 "${CONFIG[ROOT_PART]}" /mnt/root
-    mount -o subvol=@home,compress=zstd:1 "${CONFIG[ROOT_PART]}" /mnt/home
+    mount -o subvol=@root,nodatacow,noatime,discard=async "${CONFIG[ROOT_PART]}" /mnt/root
+    mount -o subvol=@home,nodatacow,noatime,discard=async "${CONFIG[ROOT_PART]}" /mnt/home
     mount "${CONFIG[BOOT_PART]}" /mnt/boot
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
 }
