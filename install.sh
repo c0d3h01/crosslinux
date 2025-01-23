@@ -217,6 +217,7 @@ function install_base_system() {
         nmap
         inxi
         ananicy-cpp
+        earlyoom
 
         # Development-tool
         gcc
@@ -291,7 +292,7 @@ function configure_system() {
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
     # Enable services...
-    systemctl enable NetworkManager bluetooth fstrim.timer gdm ananicy-cpp
+    systemctl enable NetworkManager bluetooth fstrim.timer gdm ananicy-cpp earlyoom
 
     # Configure Docker
     usermod -aG docker "$USER"
