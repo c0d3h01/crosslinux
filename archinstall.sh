@@ -102,27 +102,28 @@ function install_base_system() {
     info "Installing base system..."
 
     info "Running reflctor..."
-    reflector --country India --age 6 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+    reflector --country India --age 7 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
     
     info "Configuring pacman for iso installaton..."
     # Pacman configure for arch-iso
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout' /etc/pacman.conf
-    sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
     # Refresh package databases
     pacman -Syy
 
     local base_packages=(
         # Core System
-        base base-devel
+        base
+        base-devel
         linux-firmware
         linux-lts
-        linux
 
         # Filesystem
         btrfs-progs
         dosfstools
+
+        # ZSwap
         zram-generator
 
         # Boot
@@ -141,6 +142,7 @@ function install_base_system() {
 
         # Network
         networkmanager
+        ufw
     
         # Multimedia & Bluetooth
         bluez
@@ -152,17 +154,23 @@ function install_base_system() {
         wireplumber
 
         # Gnome
-        arc-gtk-theme
-        papirus-icon-theme
+        # AUR - yaru-gtk-theme yaru-icon-theme
+        adwaita-icon-theme
+        adwaita-cursors
+        sushi
+        totem
         loupe
         evince
         file-roller
+        rhythmbox
+        micro
+        nautilus
         gdm
         gnome-settings-daemon
+        gnome-backgrounds
         gnome-session 
         gnome-calculator
         gnome-clocks
-        gnome-console
         gnome-control-center
         gnome-disk-utility
         gnome-keyring
@@ -170,9 +178,7 @@ function install_base_system() {
         gnome-power-manager
         gnome-screenshot
         gnome-shell
-        gnome-system-monitor
         gnome-terminal
-        gnome-themes-extra
         gnome-tweaks
         gnome-usage
         gnome-logs
@@ -182,24 +188,18 @@ function install_base_system() {
         gvfs-mtp
         gvfs-nfs
         gvfs-smb
-        nautilus
-        sushi
-        totem
+        xdg-desktop-portal
         xdg-desktop-portal-gnome
         xdg-user-dirs-gtk
-        rhythmbox
-        micro
 
         # Fonts
-        noto-fonts
+        adobe-source-code-pro-fonts
         noto-fonts-emoji
-        ttf-dejavu
-        ttf-liberation
-        terminus-font
+        ttf-fira-code
 
         # Essential System Utilities
+        bc # bench*d
         ibus-typing-booster
-        qjournalctl
         git
         reflector
         pacutils
@@ -207,7 +207,6 @@ function install_base_system() {
         fastfetch
         snapper
         snap-pac
-        xclip
         flatpak
         glances
         wget
@@ -235,12 +234,12 @@ function install_base_system() {
         python-pip
 
         # User Utilities
+        firefox
         discord
         transmission-gtk
-        wine
         telegram-desktop
     )
-    pacstrap -K -i /mnt --needed "${base_packages[@]}"
+    pacstrap -K /mnt --needed "${base_packages[@]}"
 }
 
 # System configuration function
@@ -299,13 +298,13 @@ function configure_system() {
 
     cat > "/usr/lib/systemd/zram-generator.conf" << ZRAM
 [zram0] 
-compression-algorithm = zstd lz4
-zram-size = ram * 2
+compression-algorithm = zstd
+zram-size = ram
 swap-priority = 100
 fs-type = swap
 ZRAM
 
-    reflector --country India --age 10 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+    reflector --country India --age 7 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
 EOF
 }
 
