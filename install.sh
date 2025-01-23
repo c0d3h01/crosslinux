@@ -57,9 +57,9 @@ function setup_disk() {
 
     # Create partitions
     sgdisk \
-        --new=1:0:+512M --typecode=1:ef00 --change-name=1:"EFI" \
-        --new=2:0:+1G --typecode=2:8300 --change-name=2:"BOOT" \
-        --new=3:0:0 --typecode=3:8300 --change-name=3:"ROOT" \
+        --new=1:0:+512M --typecode=1:ef00 --change-name=1:"efi" \
+        --new=2:0:+1G --typecode=2:8300 --change-name=2:"boot" \
+        --new=3:0:0 --typecode=3:8300 --change-name=3:"root" \
         "${CONFIG[DRIVE]}"
 
     # Reload the partition table
@@ -86,16 +86,11 @@ function setup_filesystems() {
     mount -o subvol=@,compress=zstd:1 "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary directories
-    mkdir -p /mnt/home
-    mkdir -p /mnt/root
-    mkdir -p /mnt/boot
-    mkdir -p /mnt/boot/efi
+    mkdir -p /mnt/home /mnt/root /mnt/boot/efi
 
     # Mount subvolumes
     mount -o subvol=@root,compress=zstd:1 "${CONFIG[ROOT_PART]}" /mnt/root
     mount -o subvol=@home,compress=zstd:1 "${CONFIG[ROOT_PART]}" /mnt/home
-
-    # Mount BOOT and EFI partitions
     mount "${CONFIG[BOOT_PART]}" /mnt/boot
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
 }
