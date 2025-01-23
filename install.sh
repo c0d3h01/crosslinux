@@ -238,7 +238,6 @@ function install_base_system() {
         transmission-gtk
         wine
         telegram-desktop
-        libreoffice-fresh
     )
     pacstrap -K -i /mnt --needed "${base_packages[@]}"
 }
