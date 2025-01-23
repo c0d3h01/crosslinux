@@ -86,12 +86,14 @@ function setup_filesystems() {
     mount -o subvol=@,compress=zstd:1 "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary directories
-    mkdir -p /mnt/home /mnt/root /mnt/boot/efi
+    mkdir -p /mnt/home /mnt/root /mnt/boot
 
     # Mount subvolumes
     mount -o subvol=@root,nodatacow,noatime,discard=async "${CONFIG[ROOT_PART]}" /mnt/root
     mount -o subvol=@home,nodatacow,noatime,discard=async "${CONFIG[ROOT_PART]}" /mnt/home
     mount "${CONFIG[BOOT_PART]}" /mnt/boot
+    
+    mkdir -p /mnt/boot/efi
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
 }
 
