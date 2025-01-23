@@ -6,7 +6,7 @@
 # Automated Arch Linux Installation Personal Setup Script
 # ==============================================================================
 
-set -euo pipefail
+set -exuo pipefail
 
 # Color codes
 GREEN='\033[0;32m'
@@ -86,7 +86,7 @@ function setup_filesystems() {
     mount -o subvol=@,compress=zstd:1 "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary directories
-    mkdir -p /mnt/{home,root,boot/efi}
+    mkdir -p /mnt/{home,root,boot,boot/efi}
 
     # Mount subvolumes
     mount -o subvol=@root,compress=zstd:1 "${CONFIG[ROOT_PART]}" /mnt/root
