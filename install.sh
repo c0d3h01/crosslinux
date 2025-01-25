@@ -80,21 +80,73 @@ function setup_filesystems() {
     btrfs subvolume create /mnt/@
     btrfs subvolume create /mnt/@root
     btrfs subvolume create /mnt/@home
+    btrfs subvolume create /mnt/@snapshots
 
     # Unmount and remount with subvolumes
     umount /mnt
-    mount -o subvol=@,compress=zstd:1 "${CONFIG[ROOT_PART]}" /mnt
+    mount -o "subvol=@,compress=zstd:1" "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary directories
-    mkdir -p /mnt/home /mnt/root /mnt/boot
+    mkdir -p /mnt/home /mnt/root /mnt/boot /mnt/snapshots
 
     # Mount subvolumes
-    mount -o subvol=@root,nodatacow,noatime,discard=async "${CONFIG[ROOT_PART]}" /mnt/root
-    mount -o subvol=@home,nodatacow,noatime,discard=async "${CONFIG[ROOT_PART]}" /mnt/home
+    mount -o "subvol=@root,compress=zstd:1" "${CONFIG[ROOT_PART]}" /mnt/root
+    mount -o "subvol=@home,compress=zstd:1" "${CONFIG[ROOT_PART]}" /mnt/home
     mount "${CONFIG[BOOT_PART]}" /mnt/boot
     
     mkdir -p /mnt/boot/efi
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
+}
+
+function snapper_configurations() {
+
+    # Install snapper
+    pacman -Sy --noconfirm snapper
+
+    # Create snapper configuration for root subvolume
+    snapper -c root create-config /mnt
+
+    # Create a snapshot manually for the initial backup
+    snapshot_name="snapshot-$(date +%Y%m%d-%H%M%S)"
+    btrfs subvolume snapshot /mnt/@ /mnt/snapshots/$snapshot_name
+
+    # Set cleanup policies for snapper (retaining snapshots based on time)
+    snapper -c root set-config TIMELINE_LIMIT_HOURLY=5 /mnt/
+    snapper -c root set-config TIMELINE_LIMIT_DAILY=10 /mnt/
+    snapper -c root set-config TIMELINE_LIMIT_MONTHLY=2 /mnt/
+    snapper -c root set-config CLEANUP_LIMIT=50 /mnt/
+
+    # Ensure Snapper uses the @snapshots subvolume
+    snapper -c root set-config SUBVOLUME="/mnt/snapshots" /mnt/
+
+    # Enter chroot and create systemd service/timer for automated snapshots
+    arch-chroot /mnt /bin/bash << EOF
+    # Create the systemd snapshot service file
+    cat > "/etc/systemd/system/btrfs-snapshot.service" << SS
+[Unit]
+Description=Btrfs Snapshot Creation Service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/btrfs subvolume snapshot /mnt/@ /mnt/snapshots/snapshot-\$(date +\%Y\%m\%d-\%H\%M\%S)
+SS
+
+    # Create the systemd timer file
+    cat > "/etc/systemd/system/btrfs-snapshot.timer" << ST
+[Unit]
+Description=Create Btrfs Snapshots Regularly
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=1h
+
+[Install]
+WantedBy=timers.target
+ST
+
+    # Enable the snapshot timer to automatically create snapshots
+    systemctl enable btrfs-snapshot.timer
+EOF
 }
 
 # Base system installation function
@@ -166,6 +218,7 @@ function install_base_system() {
         micro
         nautilus
         gdm
+        power-profiles-daemon
         gnome-settings-daemon
         gnome-backgrounds
         gnome-session 
@@ -180,7 +233,6 @@ function install_base_system() {
         gnome-shell
         gnome-terminal
         gnome-tweaks
-        gnome-usage
         gnome-logs
         gvfs
         gvfs-afc
@@ -193,12 +245,12 @@ function install_base_system() {
         xdg-user-dirs-gtk
 
         # Fonts
-        adobe-source-code-pro-fonts
+        noto-fonts
         noto-fonts-emoji
         ttf-fira-code
 
         # Essential System Utilities
-        bc # bench*d
+        bc
         ibus-typing-booster
         git
         reflector
@@ -216,7 +268,6 @@ function install_base_system() {
         nmap
         inxi
         ananicy-cpp
-        earlyoom
 
         # Development-tool
         gcc
@@ -291,7 +342,7 @@ function configure_system() {
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
     # Enable services...
-    systemctl enable NetworkManager bluetooth fstrim.timer gdm ananicy-cpp earlyoom
+    systemctl enable NetworkManager bluetooth fstrim.timer gdm ananicy-cpp btrfs-snapshot.timer
 
     # Configure Docker
     usermod -aG docker "$USER"
@@ -303,8 +354,6 @@ zram-size = ram
 swap-priority = 100
 fs-type = swap
 ZRAM
-
-    reflector --country India --age 7 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
 EOF
 }
 
@@ -317,6 +366,7 @@ function main() {
     setup_filesystems
     install_base_system
     configure_system
+    snapper_configurations
     umount -R /mnt
     success "Installation completed! You can now reboot your system."
 }
