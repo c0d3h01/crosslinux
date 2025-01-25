@@ -79,14 +79,13 @@ function setup_filesystems() {
     # Create subvolumes
     btrfs subvolume create /mnt/@
     btrfs subvolume create /mnt/@home
-    btrfs subvolume create /mnt/@snapshots
 
     # Unmount and remount with subvolumes
     umount /mnt
     mount -o "subvol=@,compress=zstd:1" "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary directories
-    mkdir -p /mnt/home /mnt/boot /mnt/snapshots
+    mkdir -p /mnt/home /mnt/boot
 
     # Mount subvolumes
     mount -o "subvol=@home,compress=zstd:1" "${CONFIG[ROOT_PART]}" /mnt/home
@@ -94,57 +93,6 @@ function setup_filesystems() {
     
     mkdir -p /mnt/boot/efi
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
-}
-
-function snapper_configurations() {
-
-    # Install snapper
-    pacman -Sy --noconfirm snapper
-
-    # Create snapper configuration for root subvolume
-    snapper -c root create-config /mnt
-
-    # Create a snapshot manually for the initial backup
-    snapshot_name="snapshot-$(date +%Y%m%d-%H%M%S)"
-    btrfs subvolume snapshot /mnt/@ /mnt/snapshots/$snapshot_name
-
-    # Set cleanup policies for snapper (retaining snapshots based on time)
-    snapper -c root set-config TIMELINE_LIMIT_HOURLY=5 /mnt/
-    snapper -c root set-config TIMELINE_LIMIT_DAILY=10 /mnt/
-    snapper -c root set-config TIMELINE_LIMIT_MONTHLY=2 /mnt/
-    snapper -c root set-config CLEANUP_LIMIT=50 /mnt/
-
-    # Ensure Snapper uses the @snapshots subvolume
-    snapper -c root set-config SUBVOLUME="/mnt/snapshots" /mnt/
-
-    # Enter chroot and create systemd service/timer for automated snapshots
-    arch-chroot /mnt /bin/bash << EOF
-    # Create the systemd snapshot service file
-    cat > "/etc/systemd/system/btrfs-snapshot.service" << SS
-[Unit]
-Description=Btrfs Snapshot Creation Service
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/btrfs subvolume snapshot /mnt/@ /mnt/snapshots/snapshot-\$(date +\%Y\%m\%d-\%H\%M\%S)
-SS
-
-    # Create the systemd timer file
-    cat > "/etc/systemd/system/btrfs-snapshot.timer" << ST
-[Unit]
-Description=Create Btrfs Snapshots Regularly
-
-[Timer]
-OnBootSec=10min
-OnUnitActiveSec=1h
-
-[Install]
-WantedBy=timers.target
-ST
-
-    # Enable the snapshot timer to automatically create snapshots
-    systemctl enable btrfs-snapshot.timer
-EOF
 }
 
 # Base system installation function
@@ -340,7 +288,7 @@ function configure_system() {
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
     # Enable services...
-    systemctl enable NetworkManager bluetooth fstrim.timer gdm ananicy-cpp power-profiles-daemon btrfs-snapshot.timer
+    systemctl enable NetworkManager bluetooth fstrim.timer gdm ananicy-cpp power-profiles-daemon
 
     # Configure Docker
     usermod -aG docker "$USER"
@@ -363,7 +311,6 @@ function main() {
     setup_filesystems
     install_base_system
     configure_system
-    snapper_configurations
     umount -R /mnt
     success "Installation completed! You can now reboot your system."
 }
