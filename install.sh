@@ -78,7 +78,6 @@ function setup_filesystems() {
 
     # Create subvolumes
     btrfs subvolume create /mnt/@
-    btrfs subvolume create /mnt/@root
     btrfs subvolume create /mnt/@home
     btrfs subvolume create /mnt/@snapshots
 
@@ -87,10 +86,9 @@ function setup_filesystems() {
     mount -o "subvol=@,compress=zstd:1" "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary directories
-    mkdir -p /mnt/home /mnt/root /mnt/boot /mnt/snapshots
+    mkdir -p /mnt/home /mnt/boot /mnt/snapshots
 
     # Mount subvolumes
-    mount -o "subvol=@root,compress=zstd:1" "${CONFIG[ROOT_PART]}" /mnt/root
     mount -o "subvol=@home,compress=zstd:1" "${CONFIG[ROOT_PART]}" /mnt/home
     mount "${CONFIG[BOOT_PART]}" /mnt/boot
     
@@ -342,7 +340,7 @@ function configure_system() {
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
     # Enable services...
-    systemctl enable NetworkManager bluetooth fstrim.timer gdm ananicy-cpp btrfs-snapshot.timer
+    systemctl enable NetworkManager bluetooth fstrim.timer gdm ananicy-cpp power-profiles-daemon btrfs-snapshot.timer
 
     # Configure Docker
     usermod -aG docker "$USER"
@@ -352,7 +350,6 @@ function configure_system() {
 compression-algorithm = zstd
 zram-size = ram
 swap-priority = 100
-fs-type = swap
 ZRAM
 EOF
 }
