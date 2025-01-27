@@ -82,13 +82,13 @@ function setup_filesystems() {
 
     # Unmount and remount with subvolumes
     umount /mnt
-    mount -o "subvol=@,compress=zstd:1" "${CONFIG[ROOT_PART]}" /mnt
+    mount -o "subvol=@,compress=zstd:1,discard=async" "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary directories
     mkdir -p /mnt/home /mnt/boot
 
     # Mount subvolumes
-    mount -o "subvol=@home,compress=zstd:1" "${CONFIG[ROOT_PART]}" /mnt/home
+    mount -o "subvol=@home,compress=zstd:1,discard=async" "${CONFIG[ROOT_PART]}" /mnt/home
     mount "${CONFIG[BOOT_PART]}" /mnt/boot
     
     mkdir -p /mnt/boot/efi
@@ -120,9 +120,6 @@ function install_base_system() {
         # Filesystem
         btrfs-progs
         dosfstools
-
-        # ZSwap
-        zram-generator
 
         # Boot
         grub
@@ -218,12 +215,8 @@ function install_base_system() {
         system-config-printer
         ccache
         bleachbit
-        pacman-contrib
-        snapd
         neovim
         python-neovim
-        zsh-syntax-highlighting
-        zsh-autosuggestions
 
         # Development-tool
         gcc
@@ -247,6 +240,13 @@ function install_base_system() {
         telegram-desktop
     )
     pacstrap -K /mnt --needed "${base_packages[@]}"
+}
+
+function create_swap() {
+    btrfs subvolume create /swap
+    btrfs filesystem mkswapfile --size 8g --uuid clear /swap/swapfile
+    swapon /swap/swapfile
+    echo "/swap/swapfile none swap defaults 0 0" > "/etc/fstab"
 }
 
 # System configuration function
@@ -300,31 +300,13 @@ function configure_system() {
     # Configure Docker
     usermod -aG docker "${CONFIG[USERNAME]}"
 
-    cat > "/usr/lib/systemd/zram-generator.conf" << ZRAM
-[zram0] 
-compression-algorithm = zstd
-zram-size = ram
-swap-priority = 100
-ZRAM
-
     # Snapper configuration for Btrfs
-    snapper -c root create-config /
-    snapper -c home create-config /home
-    chown -R :wheel /etc/snapper/configs/
-    chmod 750 /etc/snapper/configs/
+    # snapper -c root create-config /
+    # snapper -c home create-config /home
+    # chown -R :wheel /etc/snapper/configs/
+    # chmod 750 /etc/snapper/configs/
 
-    # Install optional AUR helper
-    sudo -u ${CONFIG[USERNAME]} bash -c "git clone https://aur.archlinux.org/yay-bin.git && cd yay-bin && makepkg -si"
-    echo "YAYFLAGS=\"--mflags=-j$(nproc)\"" >> ~/.zshrc
-
-    # Configure zsh for the user
-    sudo -u ${CONFIG[USERNAME]} bash -c "sh -c \"\$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\""
-    echo "source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" >> ~/.zshrc
-    echo "source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" >> ~/.zshrc
-
-    sudo -u ${CONFIG[USERNAME]} bash -c "git clone --depth 1 https://github.com/wbthomason/packer.nvim ~/.local/share/nvim/site/pack/packer/start/packer.nvim"
-
-    ln -s /var/lib/snapd/snap /snap
+    # echo "YAYFLAGS=\"--mflags=-j$(nproc)\"" >> ~/.zshrc
 
     # Enable additional services
     systemctl enable NetworkManager
@@ -335,8 +317,6 @@ ZRAM
     systemctl enable systemd-timesyncd
     systemctl enable snapper-timeline.timer snapper-cleanup.timer
     systemctl enable ufw
-    systemctl enable snapd.socket
-    systemctl --user enable copyq
     systemctl enable swap-create@zram0.service
 EOF
 }
@@ -349,6 +329,7 @@ function main() {
     setup_disk
     setup_filesystems
     install_base_system
+    create_swap
     configure_system
     umount -R /mnt
     success "Installation completed! You can now reboot your system."
