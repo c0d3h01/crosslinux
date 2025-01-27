@@ -213,7 +213,17 @@ function install_base_system() {
         openssh
         nmap
         inxi
-        ananicy-cpp
+        zsh
+        cups
+        system-config-printer
+        ccache
+        bleachbit
+        pacman-contrib
+        snapd
+        neovim
+        python-neovim
+        zsh-syntax-highlighting
+        zsh-autosuggestions
 
         # Development-tool
         gcc
@@ -287,11 +297,8 @@ function configure_system() {
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
-    # Enable services...
-    systemctl enable NetworkManager bluetooth fstrim.timer gdm ananicy-cpp power-profiles-daemon
-
     # Configure Docker
-    usermod -aG docker "$USER"
+    usermod -aG docker "${CONFIG[USERNAME]}"
 
     cat > "/usr/lib/systemd/zram-generator.conf" << ZRAM
 [zram0] 
@@ -299,6 +306,38 @@ compression-algorithm = zstd
 zram-size = ram
 swap-priority = 100
 ZRAM
+
+    # Snapper configuration for Btrfs
+    snapper -c root create-config /
+    snapper -c home create-config /home
+    chown -R :wheel /etc/snapper/configs/
+    chmod 750 /etc/snapper/configs/
+
+    # Install optional AUR helper
+    sudo -u ${CONFIG[USERNAME]} bash -c "git clone https://aur.archlinux.org/yay-bin.git && cd yay-bin && makepkg -si"
+    echo "YAYFLAGS=\"--mflags=-j$(nproc)\"" >> ~/.zshrc
+
+    # Configure zsh for the user
+    sudo -u ${CONFIG[USERNAME]} bash -c "sh -c \"\$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\""
+    echo "source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" >> ~/.zshrc
+    echo "source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" >> ~/.zshrc
+
+    sudo -u ${CONFIG[USERNAME]} bash -c "git clone --depth 1 https://github.com/wbthomason/packer.nvim ~/.local/share/nvim/site/pack/packer/start/packer.nvim"
+
+    ln -s /var/lib/snapd/snap /snap
+
+    # Enable additional services
+    systemctl enable NetworkManager
+    systemctl enable bluetooth
+    systemctl enable fstrim.timer
+    systemctl enable gdm
+    systemctl enable cups.service
+    systemctl enable systemd-timesyncd
+    systemctl enable snapper-timeline.timer snapper-cleanup.timer
+    systemctl enable ufw
+    systemctl enable snapd.socket
+    systemctl --user enable copyq
+    systemctl enable swap-create@zram0.service
 EOF
 }
 
