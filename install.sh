@@ -161,7 +161,6 @@ function install_base_system() {
         micro
         nautilus
         gdm
-        power-profiles-daemon
         gnome-settings-daemon
         gnome-backgrounds
         gnome-session 
