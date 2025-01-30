@@ -137,7 +137,7 @@ function install_base_system() {
 
         # Network
         networkmanager
-        ufw
+        ufw # Firewall
     
         # Multimedia & Bluetooth
         bluez
@@ -213,9 +213,6 @@ function install_base_system() {
         cups
         system-config-printer
         ccache
-        bleachbit
-        neovim
-        python-neovim
 
         # Development-tool
         gcc
@@ -242,10 +239,11 @@ function install_base_system() {
 }
 
 function create_swap() {
-    btrfs subvolume create /swap
-    btrfs filesystem mkswapfile --size 8g --uuid clear /swap/swapfile
-    swapon /swap/swapfile
-    echo "/swap/swapfile none swap defaults 0 0" > "/etc/fstab"
+    info "Creating swap memory..."
+    btrfs subvolume create /mnt/swap
+    btrfs filesystem mkswapfile --size 8g --uuid clear /mnt/swap/swapfile
+    swapon /mnt/swap/swapfile
+    echo "/swap/swapfile none swap defaults 0 0" > "/mnt/etc/fstab"
 }
 
 # System configuration function
@@ -299,24 +297,16 @@ function configure_system() {
     # Configure Docker
     usermod -aG docker "${CONFIG[USERNAME]}"
 
-    # Snapper configuration for Btrfs
-    # snapper -c root create-config /
-    # snapper -c home create-config /home
-    # chown -R :wheel /etc/snapper/configs/
-    # chmod 750 /etc/snapper/configs/
-
-    # echo "YAYFLAGS=\"--mflags=-j$(nproc)\"" >> ~/.zshrc
-
     # Enable additional services
-    systemctl enable NetworkManager
-    systemctl enable bluetooth
-    systemctl enable fstrim.timer
-    systemctl enable gdm
-    systemctl enable cups.service
-    systemctl enable systemd-timesyncd
-    systemctl enable snapper-timeline.timer snapper-cleanup.timer
-    systemctl enable ufw
-    systemctl enable swap-create@zram0.service
+    systemctl enable \
+    NetworkManager \
+    bluetooth \
+    fstrim.timer \
+    gdm \
+    cups.service \
+    systemd-timesyncd \
+    snapper-timeline.timer snapper-cleanup.timer \
+    swap-create@zram0.service
 EOF
 }
 
