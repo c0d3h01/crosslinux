@@ -48,33 +48,42 @@ function info() { echo -e "${BLUE}INFO: $* ${NC}"; }
 function success() { echo -e "${GREEN}SUCCESS:$* ${NC}"; }
 
 function setup_disk() {
+    local drive="${CONFIG[DRIVE]}"
+    local efi_part="${CONFIG[EFI_PART]}"
+    local boot_part="${CONFIG[BOOT_PART]}"
+    local root_part="${CONFIG[ROOT_PART]}"
+
     # Wipe and prepare the disk
-    wipefs -af "${CONFIG[DRIVE]}"
-    sgdisk --zap-all "${CONFIG[DRIVE]}"
+    wipefs -af "$drive"
+    sgdisk --zap-all "$drive"
 
     # Create fresh GPT
-    sgdisk --clear "${CONFIG[DRIVE]}"
+    sgdisk --clear "$drive"
 
     # Create partitions
     sgdisk \
-        --new=1:0:+512M --typecode=1:ef00 --change-name=1:"efi" \
-        --new=2:0:+1G --typecode=2:8300 --change-name=2:"boot" \
-        --new=3:0:0 --typecode=3:8300 --change-name=3:"root" \
-        "${CONFIG[DRIVE]}"
+        --new=1:0:+512M --typecode=1:ef00 --change-name=1:"EFI" \
+        --new=2:0:+1G --typecode=2:8300 --change-name=2:"BOOT" \
+        --new=3:0:0 --typecode=3:8300 --change-name=3:"ROOT" \
+        "$drive"
 
     # Reload the partition table
-    partprobe "${CONFIG[DRIVE]}"
+    partprobe "$drive"
     sleep 2
 }
 
 function setup_filesystems() {
+    local efi_part="${CONFIG[EFI_PART]}"
+    local boot_part="${CONFIG[BOOT_PART]}"
+    local root_part="${CONFIG[ROOT_PART]}"
+
     # Format partitions
-    mkfs.fat -F32 "${CONFIG[EFI_PART]}"
-    mkfs.ext4 -L "BOOT" "${CONFIG[BOOT_PART]}"
-    mkfs.btrfs -L "ROOT" -n 16k -f "${CONFIG[ROOT_PART]}"
+    mkfs.fat -F32 "$efi_part"
+    mkfs.ext4 -L "BOOT" "$boot_part"
+    mkfs.btrfs -L "ROOT" -n 16k -f "$root_part"
 
     # Mount root partition temporarily
-    mount "${CONFIG[ROOT_PART]}" /mnt
+    mount "$root_part" /mnt
 
     # Create subvolumes
     btrfs subvolume create /mnt/@
@@ -82,17 +91,19 @@ function setup_filesystems() {
 
     # Unmount and remount with subvolumes
     umount /mnt
-    mount -o "subvol=@,compress=zstd:1,discard=async" "${CONFIG[ROOT_PART]}" /mnt
+    mount -o "subvol=@,compress=zstd:1,discard=async" "$root_part" /mnt
 
     # Create necessary directories
-    mkdir -p /mnt/home /mnt/boot
+    mkdir -p /mnt/home /mnt/boot /mnt/boot/efi
 
-    # Mount subvolumes
-    mount -o "subvol=@home,compress=zstd:1,discard=async" "${CONFIG[ROOT_PART]}" /mnt/home
-    mount "${CONFIG[BOOT_PART]}" /mnt/boot
-    
-    mkdir -p /mnt/boot/efi
-    mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
+    # Mount EFI partition first
+    mount "$efi_part" /mnt/boot/efi
+
+    # Mount boot partition
+    mount "$boot_part" /mnt/boot
+
+    # Mount home subvolume
+    mount -o "subvol=@home,compress=zstd:1,discard=async" "$root_part" /mnt/home
 }
 
 # Base system installation function
@@ -115,7 +126,8 @@ function install_base_system() {
         base
         base-devel
         linux-firmware
-        linux-lts
+        linux linux-headers
+        linux-lts linux-lts-headers
 
         # Filesystem
         btrfs-progs
@@ -147,6 +159,11 @@ function install_base_system() {
         pipewire-alsa
         pipewire-jack
         wireplumber
+        gstreamer
+        gst-plugins-base
+        gst-plugins-good
+        gst-plugins-bad
+        gst-plugins-ugly
 
         # Gnome
         # AUR - yaru-gtk-theme yaru-icon-theme
@@ -192,8 +209,10 @@ function install_base_system() {
         ttf-fira-code
 
         # Essential System Utilities
+        zram-generator
         bc
         ibus-typing-booster
+        thermald
         git
         reflector
         pacutils
@@ -238,19 +257,10 @@ function install_base_system() {
     pacstrap -K /mnt --needed "${base_packages[@]}"
 }
 
-function create_swap() {
-    info "Creating swap memory..."
-    btrfs subvolume create /mnt/swap
-    btrfs filesystem mkswapfile --size 8g --uuid clear /mnt/swap/swapfile
-    swapon /mnt/swap/swapfile
-    echo "/swap/swapfile none swap defaults 0 0" > "/mnt/etc/fstab"
-}
-
 # System configuration function
 function configure_system() {
-
     info "Configuring system..."
-
+    
     # Generate fstab
     genfstab -U /mnt >>/mnt/etc/fstab
 
@@ -288,6 +298,37 @@ function configure_system() {
     grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
     grub-mkconfig -o /boot/grub/grub.cfg
     mkinitcpio -P
+EOF
+}
+
+function post_install() {
+    arch-chroot /mnt /bin/bash << EOF
+    cat > "/usr/lib/systemd/zram-generator.conf" << ZRAM
+[zram0] 
+compression-algorithm = zstd
+zram-size = ram
+swap-priority = 100
+fs-type = swap
+ZRAM
+
+    # Install AUR helper (yay)
+    git clone https://aur.archlinux.org/yay.git /tmp/yay
+    cd /tmp/yay
+    makepkg -si --noconfirm
+
+    # Install AUR packages
+    yay -S --noconfirm \
+        yaru-gtk-theme \
+        visual-studio-code-bin
+
+    # Configure Flatpak
+    flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
+    # Set default browser (Firefox)
+    xdg-settings set default-web-browser firefox.desktop
+
+    # Set default terminal (GNOME Terminal)
+    gsettings set org.gnome.desktop.default-applications.terminal exec 'gnome-terminal'
 
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
@@ -301,6 +342,7 @@ function configure_system() {
     systemctl enable \
     NetworkManager \
     bluetooth \
+    thermald \
     fstrim.timer \
     gdm \
     cups.service \
@@ -318,8 +360,8 @@ function main() {
     setup_disk
     setup_filesystems
     install_base_system
-    create_swap
     configure_system
+    post_install
     umount -R /mnt
     success "Installation completed! You can now reboot your system."
 }
