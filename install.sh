@@ -32,7 +32,7 @@ function init_config() {
 
     CONFIG=(
         [DRIVE]="/dev/nvme0n1"
-        [HOSTNAME]="archlinux"
+        [HOSTNAME]="localhost"
         [USERNAME]="c0d3h01"
         [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
@@ -81,22 +81,22 @@ function setup_filesystems() {
     # Create subvolumes
     btrfs subvolume create /mnt/@
     btrfs subvolume create /mnt/@home
+    btrfs subvolume create /mnt/@cache
+    btrfs subvolume create /mnt/@log
 
     # Unmount and remount with subvolumes
     umount /mnt
-    mount -o "subvol=@,compress=zstd:1,discard=async" "${CONFIG[ROOT_PART]}" /mnt
+    mount -o "subvol=@,nodatacow,discard=async" "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary directories
-    mkdir -p /mnt/home /mnt/boot /mnt/boot/efi
-
-    # Mount EFI partition first
-    mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
-
-    # Mount boot partition
-    mount "${CONFIG[BOOT_PART]}" /mnt/boot
+    mkdir -p /mnt/home /mnt/boot /mnt/boot/efi /mnt/var/cache /mnt/var/log
 
     # Mount home subvolume
-    mount -o "subvol=@home,compress=zstd:1,discard=async" "${CONFIG[ROOT_PART]}" /mnt/home
+    mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
+    mount "${CONFIG[BOOT_PART]}" /mnt/boot
+    mount -o "subvol=@home,nodatacow,discard=async" "${CONFIG[ROOT_PART]}" /mnt/home
+    mount -o "subvol=@cache,nodatacow,discard=async" "${CONFIG[ROOT_PART]}" /mnt/var/cache
+    mount -o "subvol=@log,nodatacow,discard=async" "${CONFIG[ROOT_PART]}" /mnt/var/log
 }
 
 # Base system installation function
@@ -119,8 +119,7 @@ function install_base_system() {
         base
         base-devel
         linux-firmware
-        linux linux-headers
-        linux-lts linux-lts-headers
+        linux linux-lts
 
         # Filesystem
         btrfs-progs
@@ -203,13 +202,14 @@ function install_base_system() {
 
         # Essential System Utilities
         zram-generator
-        bc
+        ibus
         ibus-typing-booster
         thermald
         git
         reflector
         pacutils
         neovim
+        nano
         fastfetch
         snapper
         snap-pac
@@ -219,7 +219,6 @@ function install_base_system() {
         curl
         sshpass
         openssh
-        nmap
         inxi
         zsh
         cups
@@ -294,13 +293,13 @@ function configure_system() {
 EOF
 }
 
-function configure_user() {
+function coustom_configuration() {
 
     arch-chroot /mnt /bin/bash << EOF
 
     cat > "/usr/lib/systemd/zram-generator.conf" << ZRAM
-[zram0] 
-compression-algorithm = zstd
+[zram0]
+compression-algorithm = lz4
 zram-size = ram
 swap-priority = 100
 fs-type = swap
@@ -313,6 +312,9 @@ ZRAM
 
     # Configure Docker
     usermod -aG docker "${CONFIG[USERNAME]}"
+
+    ibus-daemon -drx
+    ibus start
 
     # Enable additional services
     systemctl enable \
@@ -337,7 +339,7 @@ function main() {
     setup_filesystems
     install_base_system
     configure_system
-    post_install
+    coustom_configuration
     umount -R /mnt
     success "Installation completed! You can now reboot your system."
 }
