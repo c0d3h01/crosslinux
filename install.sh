@@ -171,6 +171,7 @@ function install_base_system() {
         nautilus
         gdm
         gnome-settings-daemon
+        gnome-browser-connector
         gnome-backgrounds
         gnome-session 
         gnome-calculator
@@ -294,7 +295,6 @@ EOF
 }
 
 function coustom_configuration() {
-
     arch-chroot /mnt /bin/bash << EOF
 
     cat > "/usr/lib/systemd/zram-generator.conf" << ZRAM
@@ -325,13 +325,13 @@ ZRAM
     gdm \
     cups.service \
     systemd-timesyncd \
-    snapper-timeline.timer snapper-cleanup.timer \
-    swap-create@zram0.service
+    snapper-timeline.timer snapper-cleanup.timer
 EOF
 }
 
 function main() {
     info "Starting Arch Linux installation script..."
+    
     init_config
 
     # Main installation steps
