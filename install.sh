@@ -33,14 +33,13 @@ function init_config() {
     CONFIG=(
         [DRIVE]="/dev/nvme0n1"
         [HOSTNAME]="localhost"
-        [USERNAME]="c0d3h01"
+        [USERNAME]="harsh"
         [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_IN.UTF-8"
     )
     CONFIG[EFI_PART]="${CONFIG[DRIVE]}p1"
-    CONFIG[BOOT_PART]="${CONFIG[DRIVE]}p2"
-    CONFIG[ROOT_PART]="${CONFIG[DRIVE]}p3"
+    CONFIG[ROOT_PART]="${CONFIG[DRIVE]}p2"
 }
 
 # Logging functions
@@ -58,9 +57,8 @@ function setup_disk() {
 
     # Create partitions
     sgdisk \
-        --new=1:0:+512M --typecode=1:ef00 --change-name=1:"EFI" \
-        --new=2:0:+1G --typecode=2:8300 --change-name=2:"BOOT" \
-        --new=3:0:0 --typecode=3:8300 --change-name=3:"ROOT" \
+        --new=1:0:+1G --typecode=1:ef00 --change-name=1:"EFI" \
+        --new=2:0:0 --typecode=2:8300 --change-name=2:"ROOT" \
         "${CONFIG[DRIVE]}"
 
     # Reload the partition table
@@ -72,7 +70,6 @@ function setup_filesystems() {
 
     # Format partitions
     mkfs.fat -F32 "${CONFIG[EFI_PART]}"
-    mkfs.ext4 -L "BOOT" "${CONFIG[BOOT_PART]}"
     mkfs.btrfs -L "ROOT" -n 16k -f "${CONFIG[ROOT_PART]}"
 
     # Mount root partition temporarily
@@ -89,11 +86,10 @@ function setup_filesystems() {
     mount -o "subvol=@,nodatacow,discard=async" "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary directories
-    mkdir -p /mnt/home /mnt/boot /mnt/boot/efi /mnt/var/cache /mnt/var/log
+    mkdir -p /mnt/home /mnt/boot/efi /mnt/var/cache /mnt/var/log
 
-    # Mount home subvolume
+    # Mount EFI and home subvolumes
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
-    mount "${CONFIG[BOOT_PART]}" /mnt/boot
     mount -o "subvol=@home,nodatacow,discard=async" "${CONFIG[ROOT_PART]}" /mnt/home
     mount -o "subvol=@cache,nodatacow,discard=async" "${CONFIG[ROOT_PART]}" /mnt/var/cache
     mount -o "subvol=@log,nodatacow,discard=async" "${CONFIG[ROOT_PART]}" /mnt/var/log
@@ -102,24 +98,25 @@ function setup_filesystems() {
 # Base system installation function
 function install_base_system() {
     info "Installing base system..."
-
-    info "Running reflctor..."
-    reflector --country India --age 7 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
     
     info "Configuring pacman for iso installaton..."
     # Pacman configure for arch-iso
-    sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
-    sed -i '/^# Misc options/a DisableDownloadTimeout' /etc/pacman.conf
+    sed -i 's/^#ParallelDownloads/ParallelDownloads/' "/etc/pacman.conf"
+    sed -i '/^# Misc options/a DisableDownloadTimeout' "/etc/pacman.conf"
 
     # Refresh package databases
     pacman -Syy
+
+    info "Running reflctor..."
+    reflector --country India --age 7 --protocol https --sort rate --save "/etc/pacman.d/mirrorlist"
 
     local base_packages=(
         # Core System
         base
         base-devel
         linux-firmware
-        linux linux-lts
+        linux linux-headers
+        linux-lts linux-lts-headers
 
         # Filesystem
         btrfs-progs
@@ -223,12 +220,10 @@ function install_base_system() {
         inxi
         zsh
         cups
-        system-config-printer
         ccache
 
         # Development-tool
         gcc
-        gdb
         cmake
         clang
         npm
@@ -260,23 +255,23 @@ function configure_system() {
     # Chroot and configure
     arch-chroot /mnt /bin/bash << EOF
     # Set timezone and clock
-    ln -sf /usr/share/zoneinfo/${CONFIG[TIMEZONE]} /etc/localtime
+    ln -sf /usr/share/zoneinfo/${CONFIG[TIMEZONE]} "/etc/localtime"
     hwclock --systohc
 
     # Set locale
-    echo "${CONFIG[LOCALE]} UTF-8" >> /etc/locale.gen
+    echo "${CONFIG[LOCALE]} UTF-8" >> "/etc/locale.gen"
     locale-gen
-    echo "LANG=${CONFIG[LOCALE]}" > /etc/locale.conf
+    echo "LANG=${CONFIG[LOCALE]}" > "/etc/locale.conf"
 
     # Set Keymap
     echo "KEYMAP=us" > "/etc/vconsole.conf"
 
     # Set hostname
-    echo "${CONFIG[HOSTNAME]}" > /etc/hostname
+    echo "${CONFIG[HOSTNAME]}" > "/etc/hostname"
 
     # Configure hosts
     echo "127.0.0.1 localhost
-127.0.1.1 ${CONFIG[HOSTNAME]}" > /etc/hosts
+127.0.1.1 ${CONFIG[HOSTNAME]}" > "/etc/hosts"
 
     # Set root password
     echo "root:${CONFIG[PASSWORD]}" | chpasswd
@@ -286,7 +281,7 @@ function configure_system() {
     echo "${CONFIG[USERNAME]}:${CONFIG[PASSWORD]}" | chpasswd
     
     # Configure sudo
-    sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
+    sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' "/etc/sudoers"
 
     grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
     grub-mkconfig -o /boot/grub/grub.cfg
@@ -305,16 +300,13 @@ swap-priority = 100
 fs-type = swap
 ZRAM
 
-    sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
-    sed -i 's/^#Color/Color/' /etc/pacman.conf
-    sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
-    sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
+    sed -i 's/^#ParallelDownloads/ParallelDownloads/' "/etc/pacman.conf"
+    sed -i 's/^#Color/Color/' "/etc/pacman.conf"
+    sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' "/etc/pacman.conf"
+    sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' "/etc/pacman.conf"
 
     # Configure Docker
     usermod -aG docker "${CONFIG[USERNAME]}"
-
-    ibus-daemon -drx
-    ibus start
 
     # Enable additional services
     systemctl enable \
