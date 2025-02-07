@@ -3,7 +3,7 @@
 # shellcheck disable=SC2162
 #
 # ==============================================================================
-# Automated Arch Linux Installation Personal Setup Script
+# -*- Automated Arch Linux Installation Personal Setup Script -*-
 # ==============================================================================
 
 set -exuo pipefail
@@ -32,8 +32,8 @@ function init_config() {
 
     CONFIG=(
         [DRIVE]="/dev/nvme0n1"
-        [HOSTNAME]="localhost"
-        [USERNAME]="harsh"
+        [HOSTNAME]="Quantum"
+        [USERNAME]="harshal"
         [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_IN.UTF-8"
