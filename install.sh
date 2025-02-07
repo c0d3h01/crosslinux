@@ -78,20 +78,20 @@ function setup_filesystems() {
     # Create subvolumes
     btrfs subvolume create /mnt/@
     btrfs subvolume create /mnt/@home
-    btrfs subvolume create /mnt/@cache
     btrfs subvolume create /mnt/@log
+    btrfs subvolume create /mnt/@pkg
 
     # Unmount and remount with subvolumes
     umount /mnt
     mount -o "subvol=@,nodatacow,discard=async" "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary directories
-    mkdir -p /mnt/home /mnt/boot/efi /mnt/var/cache /mnt/var/log
+    mkdir -p /mnt/home /mnt/boot/efi /mnt/var/cache/pacman/pkg /mnt/var/log
 
     # Mount EFI and home subvolumes
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
     mount -o "subvol=@home,nodatacow,discard=async" "${CONFIG[ROOT_PART]}" /mnt/home
-    mount -o "subvol=@cache,nodatacow,discard=async" "${CONFIG[ROOT_PART]}" /mnt/var/cache
+    mount -o "subvol=@cache,nodatacow,discard=async" "${CONFIG[ROOT_PART]}" /mnt/var/cache/pacman/pkg
     mount -o "subvol=@log,nodatacow,discard=async" "${CONFIG[ROOT_PART]}" /mnt/var/log
 }
 
@@ -111,136 +111,137 @@ function install_base_system() {
     reflector --country India --age 7 --protocol https --sort rate --save "/etc/pacman.d/mirrorlist"
 
     local base_packages=(
-        # Core System
-        base
-        base-devel
-        linux-firmware
-        linux linux-headers
-        linux-lts linux-lts-headers
+        # -*- Core System -*-
+        base # Minimal package set to define a basic Arch Linux installation
+        base-devel # Basic tools to build Arch Linux packages
+        linux-firmware # Firmware files for Linux
+        linux # The Linux kernel and modules
+        linux-headers # Headers and scripts for building modules for the Linux kernel
+        linux-lts  # The LTS Linux kernel and modules
+        linux-lts-headers # Headers and scripts for building modules for the LTS Linux kernel
 
-        # Filesystem
-        btrfs-progs
-        dosfstools
+        # -*- Filesystem -*-
+        btrfs-progs # Btrfs filesystem utilities
 
-        # Boot
-        grub
-        efibootmgr
+        # -*- Boot -*-
+        grub # GNU GRand Unified Bootloader
+        efibootmgr # Linux user-space application to modify the EFI Boot Manager
 
-        # CPU & GPU Drivers
-        amd-ucode
-        libva-mesa-driver
-        mesa
-        vulkan-radeon
-        xf86-video-amdgpu
-        xf86-video-ati
-        xorg-server
-        xorg-xinit
+        # -*- CPU & GPU Drivers -*-
+        amd-ucode # Microcode update image for AMD CPUs
+        libva-mesa-driver # mesa with 32bit driver
+        mesa # Open-source OpenGL drivers
+        vulkan-radeon # Open-source Vulkan driver for AMD GPUs
+        xf86-video-amdgpu # X.org amdgpu video driver
+        xf86-video-ati # X.org ati video driver
+        xorg-server # Xorg X server
+        xorg-xinit # X.Org initialisation program
 
-        # Network
+        # -*- Network & firewall -*-
         networkmanager
-        ufw # Firewall
+        ufw # Uncomplicated and easy to use CLI tool for managing a netfilter firewall
+        fail2ban # Bans IPs after too many failed authentication attempts
     
-        # Multimedia & Bluetooth
-        bluez
-        bluez-utils
-        pipewire
-        pipewire-pulse
-        pipewire-alsa
-        pipewire-jack
-        wireplumber
-        gstreamer
-        gst-plugins-base
-        gst-plugins-good
-        gst-plugins-bad
-        gst-plugins-ugly
+        # -*- Multimedia & Bluetooth -*-
+        bluez # Daemons for the bluetooth protocol stack
+        bluez-utils # Development and debugging utilities for the bluetooth protocol stack
+        pipewire # Low-latency audio/video router and processor
+        pipewire-pulse # Low-latency audio/video router and processor - PulseAudio replacement
+        pipewire-alsa # Low-latency audio/video router and processor - ALSA configuration
+        pipewire-jack # Low-latency audio/video router and processor - JACK replacement
+        wireplumber # Session / policy manager implementation for PipeWire
+        gstreamer # Multimedia graph framework - core
+        gst-plugins-base # Multimedia graph framework - base plugins
+        gst-plugins-good # Multimedia graph framework - good plugins
+        gst-plugins-bad # Multimedia graph framework - bad plugins
+        gst-plugins-ugly # Multimedia graph framework - ugly plugins
 
-        # Gnome
-        # AUR - yaru-gtk-theme yaru-icon-theme
-        adwaita-icon-theme
-        adwaita-cursors
-        sushi
-        totem
-        loupe
-        evince
-        file-roller
-        rhythmbox
-        micro
-        nautilus
-        gdm
-        gnome-settings-daemon
-        gnome-browser-connector
-        gnome-backgrounds
-        gnome-session 
-        gnome-calculator
-        gnome-clocks
-        gnome-control-center
-        gnome-disk-utility
-        gnome-keyring
-        gnome-nettool
-        gnome-power-manager
-        gnome-screenshot
-        gnome-shell
-        gnome-terminal
-        gnome-tweaks
-        gnome-logs
-        gvfs
-        gvfs-afc
-        gvfs-gphoto2
-        gvfs-mtp
-        gvfs-nfs
-        gvfs-smb
-        xdg-desktop-portal
-        xdg-desktop-portal-gnome
-        xdg-user-dirs-gtk
+        # -*- Desktop environment [ Gnome ] -*-
+        nautilus # Default file manager for GNOME
+        sushi # A quick previewer for Nautilus
+        totem # Movie player for the GNOME desktop based on GStreamer
+        loupe # A simple image viewer for GNOME
+        evince # Document viewer (PDF, PostScript, XPS, djvu, dvi, tiff, cbr, cbz, cb7, cbt)
+        file-roller # Create and modify archives
+        rhythmbox # Music playback and management application
+        micro # Modern and intuitive terminal-based text editor
+        gdm # Display manager and login screen
+        gnome-settings-daemon # GNOME Settings Daemon
+        gnome-browser-connector # Native browser connector for integration with extensions.gnome.org
+        gnome-backgrounds # Background images and data for GNOME
+        gnome-session # The GNOME Session Handler
+        gnome-calculator # GNOME Scientific calculator
+        gnome-clocks # gnome-clocks
+        gnome-control-center # GNOME's main interface to configure various aspects of the desktop
+        gnome-disk-utility # Disk Management Utility for GNOME
+        gnome-keyring # Stores passwords and encryption keys
+        gnome-nettool # Graphical interface for various networking tools
+        gnome-power-manager # System power information and statistics
+        gnome-screenshot # Take pictures of your screen
+        gnome-shell # Next generation desktop shell
+        gnome-terminal # The GNOME Terminal Emulator
+        gnome-tweaks # Graphical interface for advanced GNOME 3 settings (Tweak Tool)
+        gnome-logs # A log viewer for the systemd journal
+        gvfs # Virtual filesystem implementation for GIO
+        gvfs-afc # Virtual filesystem implementation for GIO - AFC backend (Apple mobile devices)
+        gvfs-gphoto2 # Virtual filesystem implementation for GIO - gphoto2 backend (PTP camera, MTP media player)
+        gvfs-mtp # Virtual filesystem implementation for GIO - MTP backend (Android, media player)
+        gvfs-nfs # Virtual filesystem implementation for GIO - NFS backend
+        gvfs-smb # Virtual filesystem implementation for GIO - SMB/CIFS backend (Windows file sharing)
+        xdg-desktop-portal # Desktop integration portals for sandboxed apps
+        xdg-desktop-portal-gnome # Backend implementation for xdg-desktop-portal for the GNOME desktop environment
+        xdg-user-dirs-gtk # Creates user dirs and asks to relocalize them
 
-        # Fonts
-        noto-fonts
-        noto-fonts-emoji
-        ttf-fira-code
+        # -*- Fonts -*-
+        noto-fonts # Google Noto TTF fonts
+        noto-fonts-emoji # Google Noto emoji fonts
+        ttf-fira-code # Monospaced font with programming ligatures
 
-        # Essential System Utilities
-        zram-generator
-        ibus
-        ibus-typing-booster
-        thermald
-        git
-        reflector
-        pacutils
-        neovim
-        nano
-        fastfetch
-        snapper
-        snap-pac
-        flatpak
-        glances
-        wget
-        curl
-        sshpass
-        openssh
-        inxi
-        zsh
-        cups
-        ccache
+        # -*- Essential System Utilities -*-
+        alacritty # A cross-platform, GPU-accelerated terminal emulator
+        zram-generator # Systemd unit generator for zram devices
+        ibus # Intelligent input bus for Linux/Unix
+        ibus-typing-booster # Predictive input method for the IBus platform
+        thermald # The Linux Thermal Daemon program from 01.org
+        git # the fast distributed version control system
+        reflector # Filter the latest Pacman mirror list.
+        pacutils # Helper tools for libalpm
+        neovim # Fork of Vim aiming to improve user experience, plugins, and GUIs
+        nano # Pico editor clone with enhancements
+        fastfetch # A feature-rich and performance oriented neofetch like system information tool
+        snapper # A tool for managing BTRFS and LVM snapshots. It can create, diff and restore snapshots and provides timelined auto-snapping.
+        snap-pac # Pacman hooks that use snapper to create pre/post btrfs snapshots like openSUSE's YaST
+        flatpak # Linux application sandboxing and distribution framework (formerly xdg-app)
+        glances # CLI curses-based monitoring tool
+        wget # Network utility to retrieve files from the Web
+        curl # command line tool and library for transferring data with URLs
+        bat # Cat clone with syntax highlighting and git integration
+        sshpass # Fool ssh into accepting an interactive password non-interactively
+        openssh # SSH protocol implementation for remote login, command execution and file transfer
+        inxi # Full featured CLI system information tool
+        zsh # A very advanced and programmable command interpreter (shell) for UNIX
+        cups # OpenPrinting CUPS - daemon package
+        ccache # Compiler cache that speeds up recompilation by caching previous compilations
 
-        # Development-tool
-        gcc
-        cmake
-        clang
-        npm
-        nodejs
-        docker
-        docker-compose
-        openjdk-src
-        jupyterlab
-        python
-        python-virtualenv
-        python-pip
+        # -*- Development-tool -*-
+        gcc # The GNU Compiler Collection - C and C++ frontends
+        cmake # A cross-platform open-source make system
+        clang # C language family frontend for LLVM
+        npm # JavaScript package manager
+        nodejs # Evented I/O for V8 javascript
+        docker # Pack, ship and run any application as a lightweight container
+        docker-compose # Fast, isolated development environments using Docker
+        jdk-openjdk # OpenJDK Java 23 development kit
+        jupyterlab # JupyterLab computational environment
+        python # The Python programming language
+        python-virtualenv # Virtual Python Environment builder
+        python-pip # The PyPA recommended tool for installing Python packages
 
         # User Utilities
-        firefox
-        discord
-        transmission-gtk
-        telegram-desktop
+        firefox # Fast, Private & Safe Web Browser
+        discord # All-in-one voice and text chat for gamers
+        transmission-gtk # Fast, easy, and free BitTorrent client (GTK+ GUI)
+        telegram-desktop # Official Telegram Desktop client
     )
     pacstrap -K /mnt --needed "${base_packages[@]}"
 }
@@ -254,37 +255,54 @@ function configure_system() {
 
     # Chroot and configure
     arch-chroot /mnt /bin/bash << EOF
-    # Set timezone and clock
+    # Set timezone and synchronize hardware clock
+    # Links the specified timezone from zoneinfo to localtime
     ln -sf /usr/share/zoneinfo/${CONFIG[TIMEZONE]} "/etc/localtime"
+    # Synchronizes system time with hardware clock, using UTC
     hwclock --systohc
-
-    # Set locale
+    
+    # Configure system locale
+    # Add specified locale to locale generation file
     echo "${CONFIG[LOCALE]} UTF-8" >> "/etc/locale.gen"
+    # Generate locale configurations
     locale-gen
+    # Set default language configuration
     echo "LANG=${CONFIG[LOCALE]}" > "/etc/locale.conf"
-
-    # Set Keymap
+    
+    # Set keyboard layout for virtual console
     echo "KEYMAP=us" > "/etc/vconsole.conf"
-
-    # Set hostname
+    
+    # Set system hostname
     echo "${CONFIG[HOSTNAME]}" > "/etc/hostname"
+    
+    # Configure hosts file for network resolution
+    # Sets localhost and system-specific hostname mappings
+    cat > "/etc/hosts" << HOSTS
+# Standard localhost entries
+127.0.0.1       localhost
+::1             localhost
+127.0.1.1       ${CONFIG[HOSTNAME]}.localdomain ${CONFIG[HOSTNAME]}
+HOSTS
 
-    # Configure hosts
-    echo "127.0.0.1 localhost
-127.0.1.1 ${CONFIG[HOSTNAME]}" > "/etc/hosts"
-
-    # Set root password
+    # Set root password using chpasswd (securely)
     echo "root:${CONFIG[PASSWORD]}" | chpasswd
 
-    # Create user
+    # Create new user account
+    # -m creates home directory
+    # -G adds user to wheel group (for sudo access)
+    # -s sets default shell to bash
     useradd -m -G wheel -s /bin/bash ${CONFIG[USERNAME]}
+    # Set user password
     echo "${CONFIG[USERNAME]}:${CONFIG[PASSWORD]}" | chpasswd
     
-    # Configure sudo
+    # Enable sudo access for wheel group members
     sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' "/etc/sudoers"
-
+    
+    # Install GRUB bootloader for UEFI systems
     grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
+    # Generate GRUB configuration file
     grub-mkconfig -o /boot/grub/grub.cfg
+    # Regenerate initramfs for all kernels
     mkinitcpio -P
 EOF
 }
@@ -292,6 +310,8 @@ EOF
 function coustom_configuration() {
     arch-chroot /mnt /bin/bash << EOF
 
+    # Create zram configuration file for systemd zram generator
+    # This enables compressed RAM-based swap for improved system performance
     cat > "/usr/lib/systemd/zram-generator.conf" << ZRAM
 [zram0]
 compression-algorithm = lz4
@@ -300,9 +320,21 @@ swap-priority = 100
 fs-type = swap
 ZRAM
 
+    # Enable parallel downloads in pacman to speed up package retrieval
+    # This allows simultaneous downloads of multiple packages
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' "/etc/pacman.conf"
+
+    # Enable color output in pacman for better readability of package management logs
     sed -i 's/^#Color/Color/' "/etc/pacman.conf"
+
+    # Add two special configurations after the "Misc options" section:
+    # 1. DisableDownloadTimeout prevents pacman from timing out during slow downloads
+    # 2. ILoveCandy adds a fun pacman animation during package downloads
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' "/etc/pacman.conf"
+
+    # Uncomment and enable the multilib repository
+    # This allows installation of 32-bit packages on 64-bit systems
+    # Useful for compatibility and running certain legacy applications
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' "/etc/pacman.conf"
 
     # Configure Docker
