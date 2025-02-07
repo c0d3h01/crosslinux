@@ -79,20 +79,20 @@ function setup_filesystems() {
     btrfs subvolume create /mnt/@
     btrfs subvolume create /mnt/@home
     btrfs subvolume create /mnt/@log
-    btrfs subvolume create /mnt/@pkg
+    btrfs subvolume create /mnt/@cache
 
     # Unmount and remount with subvolumes
     umount /mnt
-    mount -o "subvol=@,nodatacow,discard=async" "${CONFIG[ROOT_PART]}" /mnt
+    mount -o "subvol=@,compress=zstd,discard=async" "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary directories
-    mkdir -p /mnt/home /mnt/boot/efi /mnt/var/cache/pacman/pkg /mnt/var/log
+    mkdir -p /mnt/home /mnt/boot/efi /mnt/var/log /mnt/var/cache
 
     # Mount EFI and home subvolumes
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
-    mount -o "subvol=@home,nodatacow,discard=async" "${CONFIG[ROOT_PART]}" /mnt/home
-    mount -o "subvol=@cache,nodatacow,discard=async" "${CONFIG[ROOT_PART]}" /mnt/var/cache/pacman/pkg
-    mount -o "subvol=@log,nodatacow,discard=async" "${CONFIG[ROOT_PART]}" /mnt/var/log
+    mount -o "subvol=@home,compress=zstd,discard=async" "${CONFIG[ROOT_PART]}" /mnt/home
+    mount -o "subvol=@cache,compress=zstd,discard=async" "${CONFIG[ROOT_PART]}" /mnt/var/cache
+    mount -o "subvol=@log,compress=zstd,discard=async" "${CONFIG[ROOT_PART]}" /mnt/var/log
 }
 
 # Base system installation function
