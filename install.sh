@@ -223,6 +223,8 @@ function install_base_system() {
         zsh # A very advanced and programmable command interpreter (shell) for UNIX
         cups # OpenPrinting CUPS - daemon package
         ccache # Compiler cache that speeds up recompilation by caching previous compilations
+        acpid # A daemon for delivering ACPI power management events with netlink support
+        apparmor # Mandatory Access Control (MAC) using Linux Security Module (LSM)
 
         # -*- Development-tool -*-
         gcc # The GNU Compiler Collection - C and C++ frontends
@@ -341,6 +343,15 @@ ZRAM
     # Configure Docker
     usermod -aG docker "${CONFIG[USERNAME]}"
 
+    # Set zsh as default shell for the user
+    chsh -s /bin/zsh ${CONFIG[USERNAME]}
+
+    # Configure Flatpak
+    flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
+    # Configure Snapper
+    snapper -c root create-config /
+
     # Enable additional services
     systemctl enable \
     NetworkManager \
@@ -350,10 +361,16 @@ ZRAM
     gdm \
     cups.service \
     dbus \
+    lm_sensors \
+    avahi-daemon \
+    docker \
     systemd-timesyncd \
     snapper-timeline.timer snapper-cleanup.timer
 
     systemctl --user enable --now pipewire wireplumber
+
+    # Clean up package cache
+    pacman -Scc --noconfirm
 EOF
 }
 
@@ -370,6 +387,11 @@ function main() {
     coustom_configuration
     umount -R /mnt
     success "Installation completed! You can now reboot your system."
+
+    read -p "Installation complete. Reboot now? (y/n): " REBOOT
+    if [[ $REBOOT =~ ^[Yy]$ ]]; then
+        reboot
+    fi
 }
 
 # Execute main function
