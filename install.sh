@@ -199,7 +199,7 @@ function install_base_system() {
         ttf-fira-code # Monospaced font with programming ligatures
 
         # -*- Essential System Utilities -*-
-        alacritty # A cross-platform, GPU-accelerated terminal emulator
+        ghostty # Fast, native, feature-rich terminal emulator pushing modern features
         zram-generator # Systemd unit generator for zram devices
         ibus # Intelligent input bus for Linux/Unix
         ibus-typing-booster # Predictive input method for the IBus platform
@@ -208,6 +208,7 @@ function install_base_system() {
         reflector # Filter the latest Pacman mirror list.
         pacutils # Helper tools for libalpm
         neovim # Fork of Vim aiming to improve user experience, plugins, and GUIs
+        xclip # Command line interface to the X11 clipboard
         nano # Pico editor clone with enhancements
         fastfetch # A feature-rich and performance oriented neofetch like system information tool
         snapper # A tool for managing BTRFS and LVM snapshots. It can create, diff and restore snapshots and provides timelined auto-snapping.
