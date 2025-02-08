@@ -226,6 +226,7 @@ function install_base_system() {
         ccache # Compiler cache that speeds up recompilation by caching previous compilations
         acpid # A daemon for delivering ACPI power management events with netlink support
         apparmor # Mandatory Access Control (MAC) using Linux Security Module (LSM)
+        meson # High productivity build system
 
         # -*- Development-tool -*-
         gcc # The GNU Compiler Collection - C and C++ frontends
