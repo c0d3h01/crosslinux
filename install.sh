@@ -174,6 +174,7 @@ function install_base_system() {
         gnome-clocks # gnome-clocks
         gnome-control-center # GNOME's main interface to configure various aspects of the desktop
         gnome-disk-utility # Disk Management Utility for GNOME
+        gnome-calendar # Calendar application
         gnome-keyring # Stores passwords and encryption keys
         gnome-nettool # Graphical interface for various networking tools
         gnome-power-manager # System power information and statistics
@@ -348,8 +349,11 @@ ZRAM
     fstrim.timer \
     gdm \
     cups.service \
+    dbus \
     systemd-timesyncd \
     snapper-timeline.timer snapper-cleanup.timer
+
+    systemctl --user enable --now pipewire wireplumber
 EOF
 }
 
