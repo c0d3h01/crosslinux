@@ -228,6 +228,7 @@ function install_base_system() {
         apparmor # Mandatory Access Control (MAC) using Linux Security Module (LSM)
         meson # High productivity build system
         busybox # Utilities for rescue and embedded systems
+        dracut # An event driven initramfs infrastructure
 
         # -*- Development-tool -*-
         gcc # The GNU Compiler Collection - C and C++ frontends
@@ -308,8 +309,35 @@ HOSTS
     grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
     # Generate GRUB configuration file
     grub-mkconfig -o /boot/grub/grub.cfg
+
+    cat > "/etc/dracut.conf.d/dracut.conf" << DRACUT
+# Compression method (zstd for better compression and speed)
+compress="zstd"
+compress_o="-3"
+
+# Enable hostonly mode for faster boot
+hostonly="yes"
+hostonly_cmdline="yes"
+
+# System specific drivers
+add_drivers+=" amdgpu radeon nvme r8169 nvme-core ahci sd_mod usb_storage "
+
+# File system support
+filesystems+=" btrfs vfat ext4 "
+
+# Add systemd support
+add_dracutmodules+=" systemd systemd-initrd bash kernel-modules rootfs-block "
+
+# AMD CPU microcode
+early_microcode="yes"
+
+# Exclude unnecessary modules
+omit_dracutmodules+=" plymouth biosdevname fcoe fcoe-uefi nbd network-legacy network-manager "
+DRACUT
+
     # Regenerate initramfs for all kernels
-    mkinitcpio -P
+    # mkinitcpio -P
+    dracut -f --regenerate-all
 EOF
 }
 
