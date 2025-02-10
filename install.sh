@@ -243,6 +243,7 @@ function install_base_system() {
         python # The Python programming language
         python-virtualenv # Virtual Python Environment builder
         python-pip # The PyPA recommended tool for installing Python packages
+        pycharm-community-edition # Python IDE for Professional Developers
 
         # User Utilities
         firefox # Fast, Private & Safe Web Browser
