@@ -229,6 +229,7 @@ function install_base_system() {
         meson # High productivity build system
         busybox # Utilities for rescue and embedded systems
         dracut # An event driven initramfs infrastructure
+        yank # Copy terminal output to clipboard
 
         # -*- Development-tool -*-
         gcc # The GNU Compiler Collection - C and C++ frontends
