@@ -83,16 +83,16 @@ function setup_filesystems() {
 
     # Unmount and remount with subvolumes
     umount /mnt
-    mount -o "subvol=@,compress=zstd,discard=async" "${CONFIG[ROOT_PART]}" /mnt
+    mount -o "subvol=@,compress=zstd:1,discard=async" "${CONFIG[ROOT_PART]}" /mnt
 
     # Create necessary directories
     mkdir -p /mnt/home /mnt/boot/efi /mnt/var/log /mnt/var/cache
 
     # Mount EFI and home subvolumes
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
-    mount -o "subvol=@home,compress=zstd,discard=async" "${CONFIG[ROOT_PART]}" /mnt/home
-    mount -o "subvol=@cache,compress=zstd,discard=async" "${CONFIG[ROOT_PART]}" /mnt/var/cache
-    mount -o "subvol=@log,compress=zstd,discard=async" "${CONFIG[ROOT_PART]}" /mnt/var/log
+    mount -o "subvol=@home,compress=zstd:1,discard=async" "${CONFIG[ROOT_PART]}" /mnt/home
+    mount -o "subvol=@cache,compress=zstd:1,discard=async" "${CONFIG[ROOT_PART]}" /mnt/var/cache
+    mount -o "subvol=@log,compress=zstd:1,discard=async" "${CONFIG[ROOT_PART]}" /mnt/var/log
 }
 
 # Base system installation function
@@ -246,7 +246,7 @@ function install_base_system() {
         python-pip # The PyPA recommended tool for installing Python packages
         pycharm-community-edition # Python IDE for Professional Developers
 
-        # User Utilities
+        # -*- User Utilities -*-
         firefox # Fast, Private & Safe Web Browser
         discord # All-in-one voice and text chat for gamers
         transmission-gtk # Fast, easy, and free BitTorrent client (GTK+ GUI)
@@ -313,9 +313,9 @@ HOSTS
     grub-mkconfig -o /boot/grub/grub.cfg
 
     cat > "/etc/dracut.conf.d/dracut.conf" << DRACUT
-# Compression method (zstd for better compression and speed)
+# Compression method
 compress="zstd"
-compress_o="-3"
+compress_o="-1"
 
 # Enable hostonly mode for faster boot
 hostonly="yes"
