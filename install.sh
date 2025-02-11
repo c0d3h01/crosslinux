@@ -151,6 +151,7 @@ function install_base_system() {
         pipewire-jack # Low-latency audio/video router and processor - JACK replacement
         wireplumber # Session / policy manager implementation for PipeWire
         gstreamer # Multimedia graph framework - core
+        gst-libav # Multimedia graph framework - libav plugin
         gst-plugins-base # Multimedia graph framework - base plugins
         gst-plugins-good # Multimedia graph framework - good plugins
         gst-plugins-bad # Multimedia graph framework - bad plugins
@@ -181,6 +182,7 @@ function install_base_system() {
         gnome-screenshot # Take pictures of your screen
         gnome-shell # Next generation desktop shell
         gnome-terminal # The GNOME Terminal Emulator
+        gnome-themes-extra # Extra Themes for GNOME Applications
         gnome-tweaks # Graphical interface for advanced GNOME 3 settings (Tweak Tool)
         gnome-logs # A log viewer for the systemd journal
         gvfs # Virtual filesystem implementation for GIO
@@ -195,8 +197,12 @@ function install_base_system() {
 
         # -*- Fonts -*-
         noto-fonts # Google Noto TTF fonts
+        noto-fonts-cjk # Google Noto CJK fonts
         noto-fonts-emoji # Google Noto emoji fonts
         ttf-fira-code # Monospaced font with programming ligatures
+        ttf-dejavu # Font family based on the Bitstream Vera Fonts with a wider range of characters
+        ttf-liberation # Font family which aims at metric compatibility with Arial, Times New Roman, and Courier New
+
 
         # -*- Essential System Utilities -*-
         ghostty # Fast, native, feature-rich terminal emulator pushing modern features
@@ -313,33 +319,26 @@ HOSTS
     grub-mkconfig -o /boot/grub/grub.cfg
 
     cat > "/etc/dracut.conf.d/dracut.conf" << DRACUT
-# Compression method
 compress="zstd"
 compress_o="-1"
-
-# Enable hostonly mode for faster boot
 hostonly="yes"
 hostonly_cmdline="yes"
-
-# System specific drivers
 add_drivers+=" amdgpu radeon nvme r8169 nvme-core ahci sd_mod usb_storage "
-
-# File system support
 filesystems+=" btrfs vfat ext4 "
-
-# Add systemd support
 add_dracutmodules+=" systemd systemd-initrd bash kernel-modules rootfs-block "
-
-# AMD CPU microcode
 early_microcode="yes"
-
-# Exclude unnecessary modules
 omit_dracutmodules+=" plymouth biosdevname fcoe fcoe-uefi nbd network-legacy network-manager "
 DRACUT
 
     # Regenerate initramfs for all kernels
     # mkinitcpio -P
     dracut -f --regenerate-all
+
+    # I use dracut so no need mkinitcpio
+    pacman -Rns mkinitcpio --noconfirm
+
+    # Reinstall kernel for complete dracut installation for kernels
+    pacman -S linux linux-lts
 EOF
 }
 
@@ -350,7 +349,7 @@ function coustom_configuration() {
     # This enables compressed RAM-based swap for improved system performance
     cat > "/usr/lib/systemd/zram-generator.conf" << ZRAM
 [zram0]
-compression-algorithm = lz4
+compression-algorithm = zstd
 zram-size = ram
 swap-priority = 100
 fs-type = swap
@@ -384,6 +383,7 @@ ZRAM
 
     # Configure Snapper
     snapper -c root create-config /
+    snapper -c home create-config /home
 
     # Enable additional services
     systemctl enable \
@@ -395,12 +395,18 @@ ZRAM
     cups.service \
     dbus \
     lm_sensors \
+    apparmor \
+    fail2ban \
     avahi-daemon \
     docker \
     systemd-timesyncd \
     snapper-timeline.timer snapper-cleanup.timer
 
     systemctl --user enable --now pipewire wireplumber
+
+    # Enable UFW with basic rules
+    ufw allow ssh
+    ufw enable
 
     # Clean up package cache
     pacman -Scc --noconfirm
