@@ -349,6 +349,13 @@ swap-priority = 100
 fs-type = swap
 ZRAM
 
+    # chaotic-aur repo
+    pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com --noconfirm
+    pacman-key --lsign-key 3056513887B78AEB --noconfirm
+    pacman -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' --noconfirm
+    pacman -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst' --noconfirm
+    sed -i '/^\[chaotic-aur\]/a Include = /etc/pacman.d/chaotic-mirrorlist' /etc/pacman.conf
+
     # Enable parallel downloads in pacman to speed up package retrieval
     # This allows simultaneous downloads of multiple packages
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' "/etc/pacman.conf"
