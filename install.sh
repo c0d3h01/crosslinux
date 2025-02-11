@@ -424,7 +424,7 @@ function main() {
     fi
 
     success "Installation completed! You can now reboot your system."
-    read -p "Installation complete. Reboot now? (y/n): " REBOOT
+    read -p "Reboot now? (y/n): " REBOOT
     if [[ $REBOOT =~ ^[Yy]$ ]]; then
         reboot
     fi
