@@ -333,12 +333,6 @@ DRACUT
     # Regenerate initramfs for all kernels
     # mkinitcpio -P
     dracut -f --regenerate-all
-
-    # I use dracut so no need mkinitcpio
-    pacman -Rns mkinitcpio --noconfirm
-
-    # Reinstall kernel for complete dracut installation for kernels
-    pacman -S linux linux-lts
 EOF
 }
 
@@ -407,9 +401,8 @@ ZRAM
     # Enable UFW with basic rules
     ufw allow ssh
     ufw enable
-
-    # Clean up package cache
-    pacman -Scc --noconfirm
+    ufw allow 1714:1764/udp
+    ufw allow 1714:1764/tcp
 EOF
 }
 
@@ -424,9 +417,13 @@ function main() {
     install_base_system
     configure_system
     coustom_configuration
-    umount -R /mnt
-    success "Installation completed! You can now reboot your system."
 
+    read -p "Installation complete. Would you like to unmount now? (y/n): " UNMOUNT
+    if [[ $UNMOUNT =~ ^[Yy]$ ]]; then
+        umount -R /mnt
+    fi
+
+    success "Installation completed! You can now reboot your system."
     read -p "Installation complete. Reboot now? (y/n): " REBOOT
     if [[ $REBOOT =~ ^[Yy]$ ]]; then
         reboot
