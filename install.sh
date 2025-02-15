@@ -233,7 +233,6 @@ function install_base_system() {
         apparmor # Mandatory Access Control (MAC) using Linux Security Module (LSM)
         meson # High productivity build system
         busybox # Utilities for rescue and embedded systems
-        # dracut # An event driven initramfs infrastructure
         yank # Copy terminal output to clipboard
 
         # -*- Development-tool -*-
@@ -358,13 +357,6 @@ ZRAM
     # Set zsh as default shell for the user
     chsh -s /bin/zsh ${CONFIG[USERNAME]}
 
-    # Configure Flatpak
-    flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-
-    # Configure Snapper
-    snapper -c root create-config /
-    snapper -c home create-config /home
-
     # Enable additional services
     systemctl enable \
     NetworkManager \
@@ -382,21 +374,20 @@ ZRAM
     systemd-timesyncd \
     snapper-timeline.timer snapper-cleanup.timer
 
-    systemctl --user enable --now pipewire wireplumber
+    # systemctl --user --now enable pipewire wireplumber
 
-    # Enable UFW with basic rules
-    ufw allow ssh
-    ufw enable
-    ufw allow 1714:1764/udp
-    ufw allow 1714:1764/tcp
+    # # Enable UFW with basic rules
+    # ufw allow ssh
+    # ufw enable
+    # ufw allow 1714:1764/udp
+    # ufw allow 1714:1764/tcp
 
-    # Install chaotic-aur repo
-    pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com --noconfirm
-    pacman-key --lsign-key 3056513887B78AEB --noconfirm
-    pacman -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' --noconfirm
-    pacman -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst' --noconfirm
-    sed -i '/^\[chaotic-aur\]/a Include = /etc/pacman.d/chaotic-mirrorlist' /etc/pacman.conf
+    # Configure Flatpak
+    flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
+    # Configure Snapper
+    snapper -c root create-config /
+    snapper -c home create-config /home
 EOF
 }
 
