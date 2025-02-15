@@ -331,7 +331,7 @@ omit_dracutmodules+=" plymouth biosdevname fcoe fcoe-uefi nbd network-legacy net
 DRACUT
 
     # Regenerate initramfs for all kernels
-    # mkinitcpio -P
+    mkinitcpio -P
     dracut -f --regenerate-all
 EOF
 }
