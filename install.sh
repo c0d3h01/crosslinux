@@ -185,6 +185,7 @@ function install_base_system() {
         gnome-themes-extra # Extra Themes for GNOME Applications
         gnome-tweaks # Graphical interface for advanced GNOME 3 settings (Tweak Tool)
         gnome-logs # A log viewer for the systemd journal
+        snapshot # Take pictures and videos
         gvfs # Virtual filesystem implementation for GIO
         gvfs-afc # Virtual filesystem implementation for GIO - AFC backend (Apple mobile devices)
         gvfs-gphoto2 # Virtual filesystem implementation for GIO - gphoto2 backend (PTP camera, MTP media player)
@@ -234,6 +235,8 @@ function install_base_system() {
         meson # High productivity build system
         busybox # Utilities for rescue and embedded systems
         yank # Copy terminal output to clipboard
+        ananicy-cpp # Ananicy Cpp is a full rewrite of Ananicy in C++, featuring lower CPU and RAM usage.
+        earlyoom # Early OOM Daemon for Linux
 
         # -*- Development-tool -*-
         gcc # The GNU Compiler Collection - C and C++ frontends
@@ -371,6 +374,8 @@ ZRAM
     fail2ban \
     avahi-daemon \
     docker \
+    earlyoom \
+    ananicy-cpp \
     systemd-timesyncd \
     snapper-timeline.timer snapper-cleanup.timer
 
@@ -383,7 +388,7 @@ ZRAM
     # ufw allow 1714:1764/tcp
 
     # Configure Flatpak
-    flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+    # flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
     # Configure Snapper
     snapper -c root create-config /
