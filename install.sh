@@ -203,7 +203,6 @@ function install_base_system() {
         ttf-dejavu # Font family based on the Bitstream Vera Fonts with a wider range of characters
         ttf-liberation # Font family which aims at metric compatibility with Arial, Times New Roman, and Courier New
 
-
         # -*- Essential System Utilities -*-
         ghostty # Fast, native, feature-rich terminal emulator pushing modern features
         zram-generator # Systemd unit generator for zram devices
@@ -234,7 +233,7 @@ function install_base_system() {
         apparmor # Mandatory Access Control (MAC) using Linux Security Module (LSM)
         meson # High productivity build system
         busybox # Utilities for rescue and embedded systems
-        dracut # An event driven initramfs infrastructure
+        # dracut # An event driven initramfs infrastructure
         yank # Copy terminal output to clipboard
 
         # -*- Development-tool -*-
@@ -318,21 +317,8 @@ HOSTS
     # Generate GRUB configuration file
     grub-mkconfig -o /boot/grub/grub.cfg
 
-    cat > "/etc/dracut.conf.d/dracut.conf" << DRACUT
-compress="zstd"
-compress_o="-1"
-hostonly="yes"
-hostonly_cmdline="yes"
-add_drivers+=" amdgpu radeon nvme r8169 nvme-core ahci sd_mod usb_storage "
-filesystems+=" btrfs vfat ext4 "
-add_dracutmodules+=" systemd systemd-initrd bash kernel-modules rootfs-block "
-early_microcode="yes"
-omit_dracutmodules+=" plymouth biosdevname fcoe fcoe-uefi nbd network-legacy network-manager "
-DRACUT
-
     # Regenerate initramfs for all kernels
     mkinitcpio -P
-    dracut -f --regenerate-all
 EOF
 }
 
