@@ -107,14 +107,6 @@ function install_base_system() {
     info "Running reflctor..."
     reflector --country India --age 7 --protocol https --sort rate --save "/etc/pacman.d/mirrorlist"
 
-    # -*- Dracut hooks with flags -*-
-    arch-chroot /mnt pacman -Sy dracut --needed --noconfirm
-    cp "./dracut/dracut-install.sh" "/mnt/usr/local/bin/" && chmod +x "/mnt/usr/local/bin/dracut-install.sh"
-    cp "./dracut/dracut-remove.sh" "/mnt/usr/local/bin/" && chmod +x "/mnt/usr/local/bin/dracut-remove.sh"
-    cp "./dracut/90-dracut-install.hook" "/mnt/etc/pacman.d/hooks/" && chmod +x "/mnt/etc/pacman.d/hooks/90-dracut-install.hook"
-    cp "./dracut/60-dracut-remove.hook" "/mnt/etc/pacman.d/hooks/" && chmod +x "/mnt/etc/pacman.d/hooks/60-dracut-remove.hook"
-    cp "./dracut/myflags.conf" "/mnt/etc/dracut.conf.d/" && chmod +x "/mnt/etc/dracut.conf.d/myflags.conf"
-
     local base_packages=(
         # -*- Core System -*-
         base # Minimal package set to define a basic Arch Linux installation
@@ -122,7 +114,7 @@ function install_base_system() {
         linux-firmware # Firmware files for Linux
         linux-lts  # The LTS Linux kernel and modules
         linux-lts-headers # Headers and scripts for building modules for the LTS Linux kernel
-        # dracut # An event driven initramfs infrastructure
+        dracut # An event driven initramfs infrastructure
 
         # -*- Filesystem -*-
         btrfs-progs # Btrfs filesystem utilities
@@ -311,7 +303,17 @@ HOSTS
     
     # Enable sudo access for wheel group members
     sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' "/etc/sudoers"
+EOF
 
+    # -*- Dracut hooks with flags -*-
+    arch-chroot /mnt pacman -Sy dracut --needed --noconfirm
+    cp "./dracut/dracut-install.sh" "/mnt/usr/local/bin/" && chmod +x "/mnt/usr/local/bin/dracut-install.sh"
+    cp "./dracut/dracut-remove.sh" "/mnt/usr/local/bin/" && chmod +x "/mnt/usr/local/bin/dracut-remove.sh"
+    cp "./dracut/90-dracut-install.hook" "/mnt/etc/pacman.d/hooks/" && chmod +x "/mnt/etc/pacman.d/hooks/90-dracut-install.hook"
+    cp "./dracut/60-dracut-remove.hook" "/mnt/etc/pacman.d/hooks/" && chmod +x "/mnt/etc/pacman.d/hooks/60-dracut-remove.hook"
+    cp "./dracut/myflags.conf" "/mnt/etc/dracut.conf.d/" && chmod +x "/mnt/etc/dracut.conf.d/myflags.conf"
+
+    arch-chroot /mnt /bin/bash << EOF
     # -*- Install GRUB bootloader for UEFI systems -*-
     grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
 
@@ -320,6 +322,9 @@ HOSTS
 
     # -*- Regenerate initramfs for all kernels -*-
     dracut -f --regenerate-all
+
+    # -*- Reinstall kernel -*-
+    pacman -Sy linux-lts linux-lts-headers --needed --noconfirm
 EOF
 }
 
