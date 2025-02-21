@@ -107,18 +107,6 @@ function install_base_system() {
     info "Running reflctor..."
     reflector --country India --age 7 --protocol https --sort rate --save "/etc/pacman.d/mirrorlist"
 
-    pacman -Sy dracut --needed --noconfirm
-
-    # -*- Dracut hooks with flags -*-
-    cp "./dracut/dracut-install.sh" "/usr/local/bin/" && chmod +x "/usr/local/bin/dracut-install.sh"
-    cp "./dracut/dracut-remove.sh" "/usr/local/bin/" && chmod +x "/usr/local/bin/dracut-remove.sh"
-    cp "./dracut/90-dracut-install.hook" "/etc/pacman.d/hooks/" && chmod +x "/etc/pacman.d/hooks/90-dracut-install.hook"
-    cp "./dracut/60-dracut-remove.hook" "/etc/pacman.d/hooks/" && chmod +x "/etc/pacman.d/hooks/60-dracut-remove.hook"
-    cp "./dracut/myflags.conf" "/etc/dracut.conf.d/" && chmod +x "/etc/dracut.conf.d/myflags.conf"
-
-    # -*- Regenerate initramfs for all kernels -*-
-    # dracut --regenerate-all
-
     local base_packages=(
         # -*- Core System -*-
         base # Minimal package set to define a basic Arch Linux installation
