@@ -391,11 +391,29 @@ function coustom_configuration() {
     # This enables compressed RAM-based swap for improved system performance
     cat > "/usr/lib/systemd/zram-generator.conf" << ZRAM
 [zram0]
-compression-algorithm = lz4
+compression-algorithm = zstd lz4
 zram-size = ram
 swap-priority = 100
 fs-type = swap
 ZRAM
+
+    cat > "/usr/lib/udev/rules.d/30-zram.rules" << ZRULE
+    TEST!="/dev/zram0", GOTO="zram_end"
+SYSCTL{vm.swappiness}="150"
+LABEL="zram_end"
+ZRULE
+
+    cat > "/usr/lib/udev/rules.d/60-ioschedulers.rules" << IOSHED
+# HDD
+ACTION=="add|change", KERNEL=="sd[a-z]*", ATTR{queue/rotational}=="1", \
+    ATTR{queue/scheduler}="bfq"
+# SSD
+ACTION=="add|change", KERNEL=="sd[a-z]*|mmcblk[0-9]*", ATTR{queue/rotational}=="0", \
+    ATTR{queue/scheduler}="mq-deadline"
+# NVMe SSD
+ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rotational}=="0", \
+    ATTR{queue/scheduler}="none"
+IOSHED
 
     # -*- Enable parallel downloads in pacman to speed up package retrieval -*-
     # This allows simultaneous downloads of multiple packages
