@@ -32,7 +32,7 @@ function init_config() {
 
     CONFIG=(
         [DRIVE]="/dev/nvme0n1"
-        [HOSTNAME]="quantum"
+        [HOSTNAME]="localhost"
         [USERNAME]="c0d3h01"
         [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
@@ -62,11 +62,9 @@ function setup_disk() {
 
     # -*- Reload the partition table -*- 
     partprobe "${CONFIG[DRIVE]}"
-    sleep 2
 }
 
 function setup_filesystems() {
-
     # -*- Format partitions -*-
     mkfs.fat -F32 "${CONFIG[EFI_PART]}"
     mkfs.btrfs -L "ROOT" -n 16k -f "${CONFIG[ROOT_PART]}"
@@ -108,6 +106,18 @@ function install_base_system() {
 
     info "Running reflctor..."
     reflector --country India --age 7 --protocol https --sort rate --save "/etc/pacman.d/mirrorlist"
+
+    # -*- Dracut hooks with flags -*-
+    cp "./dracut/dracut-install.sh" "/usr/local/bin/"
+    cp "./dracut/dracut-remove.sh" "/usr/local/bin/"
+    cp "./dracut/90-dracut-install.hook" "/etc/pacman.d/hooks/"
+    cp "./dracut/60-dracut-remove.hook" "/etc/pacman.d/hooks/"
+    cp "./dracut/myflags.conf" "/etc/dracut.conf.d/"
+
+    pacman -Sy dracut --needed --noconfirm
+
+    # -*- Regenerate initramfs for all kernels -*-
+    dracut --regenerate-all
 
     local base_packages=(
         # -*- Core System -*-
@@ -226,7 +236,7 @@ function install_base_system() {
         ibus # Intelligent input bus for Linux/Unix
         ibus-typing-booster # Predictive input method for the IBus platform
         snapper # A tool for managing BTRFS and LVM snapshots. It can create, diff and restore snapshots and provides timelined auto-snapping.
-        snap-pac # Pacman hooks that use snapper to create pre/post btrfs snapshots like openSUSE's YaST
+        snap-pac # Pacman hooks for snapper
         grub-btrfs # Include btrfs snapshots in GRUB boot options
         yank # Copy terminal output to clipboard
         xclip # Command line interface to the X11 clipboard
@@ -306,73 +316,15 @@ HOSTS
     # Enable sudo access for wheel group members
     sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' "/etc/sudoers"
 EOF
-}
 
-# -*- Dracut hooks with flags -*-
-function dracut_configuration() {
+    # -*- Dracut hooks with flags -*-
+    cp "./dracut/dracut-install.sh" "/mnt/usr/local/bin/"
+    cp "./dracut/dracut-remove.sh" "/mnt/usr/local/bin/"
+    cp "./dracut/90-dracut-install.hook" "/mnt/etc/pacman.d/hooks/"
+    cp "./dracut/60-dracut-remove.hook" "/mnt/etc/pacman.d/hooks/"
+    cp "./dracut/myflags.conf" "/mnt/etc/dracut.conf.d/"
+
     arch-chroot /mnt /bin/bash << EOF
-    cat > "/usr/local/bin/dracut-install.sh" << DIN
-#!/usr/bin/env bash
-args=('--force' '--no-hostonly-cmdline')
-while read -r line; do
-	if [[ "$line" == 'usr/lib/modules/'+([^/])'/pkgbase' ]]; then
-		read -r pkgbase < "/${line}"
-		kver="${line#'usr/lib/modules/'}"
-		kver="${kver%'/pkgbase'}"
-
-		install -Dm0644 "/${line%'/pkgbase'}/vmlinuz" "/boot/vmlinuz-${pkgbase}"
-		dracut "${args[@]}" --hostonly "/boot/initramfs-${pkgbase}.img" --kver "$kver"
-		dracut "${args[@]}" --add-confdir rescue  "/boot/initramfs-${pkgbase}-fallback.img" --kver "$kver"
-	fi
-done
-DIN
-
-    cat > "/usr/local/bin/dracut-remove.sh" << DRM
-#!/usr/bin/env bash
-while read -r line; do
-	if [[ "$line" == 'usr/lib/modules/'+([^/])'/pkgbase' ]]; then
-		read -r pkgbase < "/${line}"
-		rm -f "/boot/vmlinuz-${pkgbase}" "/boot/initramfs-${pkgbase}.img" "/boot/initramfs-${pkgbase}-fallback.img"
-	fi
-done
-DRM
-
-    cat > "/etc/pacman.d/hooks/90-dracut-install.hook" << DINH
-[Trigger]
-Type = Path
-Operation = Install
-Operation = Upgrade
-Target = usr/lib/modules/*/pkgbase
-
-[Action]
-Description = Updating linux initcpios (with dracut!)...
-When = PostTransaction
-Exec = /usr/local/bin/dracut-install.sh
-Depends = dracut
-NeedsTargets
-DINH
-
-    cat > "/etc/pacman.d/hooks/60-dracut-remove.hook" << DRMH
-[Trigger]
-Type = Path
-Operation = Remove
-Target = usr/lib/modules/*/pkgbase
-
-[Action]
-Description = Removing linux initcpios...
-When = PreTransaction
-Exec = /usr/local/bin/dracut-remove.sh
-NeedsTargets
-DRMH
-
-    cat > "/etc/dracut.conf.d/myflags.conf" << DFLAG
-hostonly="yes"
-compress="zstd"
-DFLAG
-
-    # -*- Dracut includes Btrfs support -*-
-    echo 'add_dracutmodules+=" btrfs "' > /etc/dracut.conf.d/btrfs.conf
-
     # -*- Install GRUB bootloader for UEFI systems -*-
     grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
 
@@ -381,8 +333,6 @@ DFLAG
 
     # -*- Generate GRUB configuration file -*-
     grub-mkconfig -o /boot/grub/grub.cfg
-
-    pacman -Sy linux-lts linux-lts-headers --needed --noconfirm
 EOF
 }
 
@@ -457,11 +407,12 @@ IOSHED
 
     # -*- Configure Flatpak -*-
     flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+EOF
 
     # -*- Configure Snapper -*-
-    # snapper -c root create-config /
-    # snapper -c home create-config /home
-EOF
+    pacman -Sy --noconfirm snapper
+    snapper -c root create-config /mnt/
+    snapper -c home create-config /mnt/home
 }
 
 function main() {
@@ -473,19 +424,12 @@ function main() {
     setup_disk
     setup_filesystems
     install_base_system
-    dracut_configuration
     configure_system
     coustom_configuration
 
-    read -p "Installation complete. Would you like to unmount now? (y/n): " UNMOUNT
+    read -p "Installation successful!, Unmount NOW? (y/n): " UNMOUNT
     if [[ $UNMOUNT =~ ^[Yy]$ ]]; then
         umount -R /mnt
-    fi
-
-    success "Installation completed! You can now reboot your system."
-    read -p "Reboot now? (y/n): " REBOOT
-    if [[ $REBOOT =~ ^[Yy]$ ]]; then
-        reboot
     fi
 }
 
