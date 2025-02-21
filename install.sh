@@ -252,74 +252,6 @@ function install_base_system() {
         transmission-gtk # Fast, easy, and free BitTorrent client (GTK+ GUI)
         telegram-desktop # Official Telegram Desktop client
     )
-
-    # -*- Dracut hooks with flags -*-
-    arch-chroot /mnt /bin/bash << EOF
-    cat > "/usr/local/bin/dracut-install.sh" << DIN
-#!/usr/bin/env bash
-
-args=('--force' '--no-hostonly-cmdline')
-
-while read -r line; do
-	if [[ "$line" == 'usr/lib/modules/'+([^/])'/pkgbase' ]]; then
-		read -r pkgbase < "/${line}"
-		kver="${line#'usr/lib/modules/'}"
-		kver="${kver%'/pkgbase'}"
-
-		install -Dm0644 "/${line%'/pkgbase'}/vmlinuz" "/boot/vmlinuz-${pkgbase}"
-		dracut "${args[@]}" --hostonly "/boot/initramfs-${pkgbase}.img" --kver "$kver"
-		dracut "${args[@]}" --add-confdir rescue  "/boot/initramfs-${pkgbase}-fallback.img" --kver "$kver"
-	fi
-done
-DIN
-
-    cat > "/usr/local/bin/dracut-remove.sh" << DRM
-#!/usr/bin/env bash
-
-while read -r line; do
-	if [[ "$line" == 'usr/lib/modules/'+([^/])'/pkgbase' ]]; then
-		read -r pkgbase < "/${line}"
-		rm -f "/boot/vmlinuz-${pkgbase}" "/boot/initramfs-${pkgbase}.img" "/boot/initramfs-${pkgbase}-fallback.img"
-	fi
-done
-DRM
-
-    cat > "/etc/pacman.d/hooks/90-dracut-install.hook" << DINH
-[Trigger]
-Type = Path
-Operation = Install
-Operation = Upgrade
-Target = usr/lib/modules/*/pkgbase
-
-[Action]
-Description = Updating linux initcpios (with dracut!)...
-When = PostTransaction
-Exec = /usr/local/bin/dracut-install.sh
-Depends = dracut
-NeedsTargets
-DINH
-
-    cat > "/etc/pacman.d/hooks/60-dracut-remove.hook" << DRMH
-[Trigger]
-Type = Path
-Operation = Remove
-Target = usr/lib/modules/*/pkgbase
-
-[Action]
-Description = Removing linux initcpios...
-When = PreTransaction
-Exec = /usr/local/bin/dracut-remove.sh
-NeedsTargets
-DRMH
-
-    cat > "/etc/dracut.conf.d/myflags.conf" << DFLAG
-hostonly="yes"
-compress="zstd"
-DFLAG
-
-    # -*- Dracut includes Btrfs support -*-
-    echo 'add_dracutmodules+=" btrfs "' > /etc/dracut.conf.d/btrfs.conf
-EOF
     pacstrap -K /mnt --needed "${base_packages[@]}"
 }
 
@@ -373,15 +305,84 @@ HOSTS
     
     # Enable sudo access for wheel group members
     sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' "/etc/sudoers"
-    
-    # Install GRUB bootloader for UEFI systems
+EOF
+}
+
+# -*- Dracut hooks with flags -*-
+function dracut_configuration() {
+    arch-chroot /mnt /bin/bash << EOF
+    cat > "/usr/local/bin/dracut-install.sh" << DIN
+#!/usr/bin/env bash
+args=('--force' '--no-hostonly-cmdline')
+while read -r line; do
+	if [[ "$line" == 'usr/lib/modules/'+([^/])'/pkgbase' ]]; then
+		read -r pkgbase < "/${line}"
+		kver="${line#'usr/lib/modules/'}"
+		kver="${kver%'/pkgbase'}"
+
+		install -Dm0644 "/${line%'/pkgbase'}/vmlinuz" "/boot/vmlinuz-${pkgbase}"
+		dracut "${args[@]}" --hostonly "/boot/initramfs-${pkgbase}.img" --kver "$kver"
+		dracut "${args[@]}" --add-confdir rescue  "/boot/initramfs-${pkgbase}-fallback.img" --kver "$kver"
+	fi
+done
+DIN
+
+    cat > "/usr/local/bin/dracut-remove.sh" << DRM
+#!/usr/bin/env bash
+while read -r line; do
+	if [[ "$line" == 'usr/lib/modules/'+([^/])'/pkgbase' ]]; then
+		read -r pkgbase < "/${line}"
+		rm -f "/boot/vmlinuz-${pkgbase}" "/boot/initramfs-${pkgbase}.img" "/boot/initramfs-${pkgbase}-fallback.img"
+	fi
+done
+DRM
+
+    cat > "/etc/pacman.d/hooks/90-dracut-install.hook" << DINH
+[Trigger]
+Type = Path
+Operation = Install
+Operation = Upgrade
+Target = usr/lib/modules/*/pkgbase
+
+[Action]
+Description = Updating linux initcpios (with dracut!)...
+When = PostTransaction
+Exec = /usr/local/bin/dracut-install.sh
+Depends = dracut
+NeedsTargets
+DINH
+
+    cat > "/etc/pacman.d/hooks/60-dracut-remove.hook" << DRMH
+[Trigger]
+Type = Path
+Operation = Remove
+Target = usr/lib/modules/*/pkgbase
+
+[Action]
+Description = Removing linux initcpios...
+When = PreTransaction
+Exec = /usr/local/bin/dracut-remove.sh
+NeedsTargets
+DRMH
+
+    cat > "/etc/dracut.conf.d/myflags.conf" << DFLAG
+hostonly="yes"
+compress="zstd"
+DFLAG
+
+    # -*- Dracut includes Btrfs support -*-
+    echo 'add_dracutmodules+=" btrfs "' > /etc/dracut.conf.d/btrfs.conf
+
+    # -*- Install GRUB bootloader for UEFI systems -*-
     grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
 
     # -*- Regenerate initramfs for all kernels -*-
     dracut --regenerate-all
 
-    # Generate GRUB configuration file
+    # -*- Generate GRUB configuration file -*-
     grub-mkconfig -o /boot/grub/grub.cfg
+
+    pacman -Sy linux-lts linux-lts-headers --needed --noconfirm
 EOF
 }
 
@@ -472,6 +473,7 @@ function main() {
     setup_disk
     setup_filesystems
     install_base_system
+    dracut_configuration
     configure_system
     coustom_configuration
 
