@@ -117,7 +117,7 @@ function install_base_system() {
     cp "./dracut/myflags.conf" "/etc/dracut.conf.d/" && chmod +x "/etc/dracut.conf.d/myflags.conf"
 
     # -*- Regenerate initramfs for all kernels -*-
-    dracut --regenerate-all
+    # dracut --regenerate-all
 
     local base_packages=(
         # -*- Core System -*-
