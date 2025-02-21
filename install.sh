@@ -8,14 +8,14 @@
 
 set -exuo pipefail
 
-# Color codes
+# -*- Color codes -*-
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
 declare -A CONFIG
 
-# Configuration function
+# -*- Configuration function -*-
 function init_config() {
 
     while true; do
@@ -32,8 +32,8 @@ function init_config() {
 
     CONFIG=(
         [DRIVE]="/dev/nvme0n1"
-        [HOSTNAME]="Quantum"
-        [USERNAME]="harshal"
+        [HOSTNAME]="quantum"
+        [USERNAME]="c0d3h01"
         [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_IN.UTF-8"
@@ -42,69 +42,68 @@ function init_config() {
     CONFIG[ROOT_PART]="${CONFIG[DRIVE]}p2"
 }
 
-# Logging functions
+# -*- Logging functions -*-
 function info() { echo -e "${BLUE}INFO: $* ${NC}"; }
 function success() { echo -e "${GREEN}SUCCESS:$* ${NC}"; }
 
 function setup_disk() {
-
-    # Wipe and prepare the disk
+    # -*- Wipe and prepare the disk -*-
     wipefs -af "${CONFIG[DRIVE]}"
     sgdisk --zap-all "${CONFIG[DRIVE]}"
 
-    # Create fresh GPT
+    # -*- Create fresh GPT -*-
     sgdisk --clear "${CONFIG[DRIVE]}"
 
-    # Create partitions
+    # -*- Create partitions -*-
     sgdisk \
         --new=1:0:+1G --typecode=1:ef00 --change-name=1:"EFI" \
         --new=2:0:0 --typecode=2:8300 --change-name=2:"ROOT" \
         "${CONFIG[DRIVE]}"
 
-    # Reload the partition table
+    # -*- Reload the partition table -*- 
     partprobe "${CONFIG[DRIVE]}"
     sleep 2
 }
 
 function setup_filesystems() {
 
-    # Format partitions
+    # -*- Format partitions -*-
     mkfs.fat -F32 "${CONFIG[EFI_PART]}"
     mkfs.btrfs -L "ROOT" -n 16k -f "${CONFIG[ROOT_PART]}"
 
-    # Mount root partition temporarily
+    # -*- Mount root partition temporarily -*-
     mount "${CONFIG[ROOT_PART]}" /mnt
 
-    # Create subvolumes
+    # -*- Create subvolumes -*-
     btrfs subvolume create /mnt/@
     btrfs subvolume create /mnt/@home
     btrfs subvolume create /mnt/@log
     btrfs subvolume create /mnt/@cache
 
-    # Unmount and remount with subvolumes
+    # -*- Unmount and remount with subvolumes -*-
     umount /mnt
     mount -o "subvol=@,compress=zstd:1,discard=async" "${CONFIG[ROOT_PART]}" /mnt
 
-    # Create necessary directories
+    # -*- Create necessary directories -*- 
     mkdir -p /mnt/home /mnt/boot/efi /mnt/var/log /mnt/var/cache
 
-    # Mount EFI and home subvolumes
+    # -*- Mount EFI and home subvolumes -*-
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
     mount -o "subvol=@home,compress=zstd:1,discard=async" "${CONFIG[ROOT_PART]}" /mnt/home
     mount -o "subvol=@cache,compress=zstd:1,discard=async" "${CONFIG[ROOT_PART]}" /mnt/var/cache
     mount -o "subvol=@log,compress=zstd:1,discard=async" "${CONFIG[ROOT_PART]}" /mnt/var/log
 }
 
-# Base system installation function
+# -*- Base system installation function -*-
 function install_base_system() {
     info "Installing base system..."
     
     info "Configuring pacman for iso installaton..."
-    # Pacman configure for arch-iso
+    # -*- Pacman configure for arch-iso -*-
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' "/etc/pacman.conf"
     sed -i '/^# Misc options/a DisableDownloadTimeout' "/etc/pacman.conf"
 
-    # Refresh package databases
+    # -*- Refresh package databases -*-
     pacman -Syy
 
     info "Running reflctor..."
@@ -115,10 +114,9 @@ function install_base_system() {
         base # Minimal package set to define a basic Arch Linux installation
         base-devel # Basic tools to build Arch Linux packages
         linux-firmware # Firmware files for Linux
-        linux # The Linux kernel and modules
-        linux-headers # Headers and scripts for building modules for the Linux kernel
         linux-lts  # The LTS Linux kernel and modules
         linux-lts-headers # Headers and scripts for building modules for the LTS Linux kernel
+        dracut # An event driven initramfs infrastructure
 
         # -*- Filesystem -*-
         btrfs-progs # Btrfs filesystem utilities
@@ -138,9 +136,8 @@ function install_base_system() {
         xorg-xinit # X.Org initialisation program
 
         # -*- Network & firewall -*-
-        networkmanager
-        ufw # Uncomplicated and easy to use CLI tool for managing a netfilter firewall
-        fail2ban # Bans IPs after too many failed authentication attempts
+        networkmanager # Network connection manager and user applications
+        firewalld # Firewall daemon with D-Bus interface
     
         # -*- Multimedia & Bluetooth -*-
         bluez # Daemons for the bluetooth protocol stack
@@ -173,7 +170,7 @@ function install_base_system() {
         gnome-session # The GNOME Session Handler
         gnome-calculator # GNOME Scientific calculator
         gnome-clocks # gnome-clocks
-        gnome-control-center # GNOME's main interface to configure various aspects of the desktop
+        gnome-control-center # GNOME's main interface to configure various aspects
         gnome-disk-utility # Disk Management Utility for GNOME
         gnome-calendar # Calendar application
         gnome-keyring # Stores passwords and encryption keys
@@ -181,7 +178,7 @@ function install_base_system() {
         gnome-power-manager # System power information and statistics
         gnome-screenshot # Take pictures of your screen
         gnome-shell # Next generation desktop shell
-        gnome-terminal # The GNOME Terminal Emulator
+        gnome-console # A simple user-friendly terminal emulator
         gnome-themes-extra # Extra Themes for GNOME Applications
         gnome-tweaks # Graphical interface for advanced GNOME 3 settings (Tweak Tool)
         gnome-logs # A log viewer for the systemd journal
@@ -205,25 +202,19 @@ function install_base_system() {
         ttf-liberation # Font family which aims at metric compatibility with Arial, Times New Roman, and Courier New
 
         # -*- Essential System Utilities -*-
-        ghostty # Fast, native, feature-rich terminal emulator pushing modern features
+        kitty # A modern, hackable, featureful, OpenGL-based terminal emulator
         zram-generator # Systemd unit generator for zram devices
-        ibus # Intelligent input bus for Linux/Unix
-        ibus-typing-booster # Predictive input method for the IBus platform
         thermald # The Linux Thermal Daemon program from 01.org
         git # the fast distributed version control system
         reflector # Filter the latest Pacman mirror list.
         pacutils # Helper tools for libalpm
         neovim # Fork of Vim aiming to improve user experience, plugins, and GUIs
-        xclip # Command line interface to the X11 clipboard
         nano # Pico editor clone with enhancements
         fastfetch # A feature-rich and performance oriented neofetch like system information tool
-        snapper # A tool for managing BTRFS and LVM snapshots. It can create, diff and restore snapshots and provides timelined auto-snapping.
-        snap-pac # Pacman hooks that use snapper to create pre/post btrfs snapshots like openSUSE's YaST
         flatpak # Linux application sandboxing and distribution framework (formerly xdg-app)
         glances # CLI curses-based monitoring tool
         wget # Network utility to retrieve files from the Web
         curl # command line tool and library for transferring data with URLs
-        bat # Cat clone with syntax highlighting and git integration
         sshpass # Fool ssh into accepting an interactive password non-interactively
         openssh # SSH protocol implementation for remote login, command execution and file transfer
         inxi # Full featured CLI system information tool
@@ -231,13 +222,15 @@ function install_base_system() {
         cups # OpenPrinting CUPS - daemon package
         ccache # Compiler cache that speeds up recompilation by caching previous compilations
         acpid # A daemon for delivering ACPI power management events with netlink support
-        apparmor # Mandatory Access Control (MAC) using Linux Security Module (LSM)
         meson # High productivity build system
-        busybox # Utilities for rescue and embedded systems
+        ibus # Intelligent input bus for Linux/Unix
+        ibus-typing-booster # Predictive input method for the IBus platform
+        snapper # A tool for managing BTRFS and LVM snapshots. It can create, diff and restore snapshots and provides timelined auto-snapping.
+        snap-pac # Pacman hooks that use snapper to create pre/post btrfs snapshots like openSUSE's YaST
+        grub-btrfs # Include btrfs snapshots in GRUB boot options
         yank # Copy terminal output to clipboard
-        ananicy-cpp # Ananicy Cpp is a full rewrite of Ananicy in C++, featuring lower CPU and RAM usage.
-        earlyoom # Early OOM Daemon for Linux
-
+        xclip # Command line interface to the X11 clipboard
+    
         # -*- Development-tool -*-
         gcc # The GNU Compiler Collection - C and C++ frontends
         cmake # A cross-platform open-source make system
@@ -259,29 +252,98 @@ function install_base_system() {
         transmission-gtk # Fast, easy, and free BitTorrent client (GTK+ GUI)
         telegram-desktop # Official Telegram Desktop client
     )
+
+    # -*- Dracut hooks with flags -*-
+    arch-chroot /mnt /bin/bash << EOF
+    cat > "/usr/local/bin/dracut-install.sh" << DIN
+#!/usr/bin/env bash
+
+args=('--force' '--no-hostonly-cmdline')
+
+while read -r line; do
+	if [[ "$line" == 'usr/lib/modules/'+([^/])'/pkgbase' ]]; then
+		read -r pkgbase < "/${line}"
+		kver="${line#'usr/lib/modules/'}"
+		kver="${kver%'/pkgbase'}"
+
+		install -Dm0644 "/${line%'/pkgbase'}/vmlinuz" "/boot/vmlinuz-${pkgbase}"
+		dracut "${args[@]}" --hostonly "/boot/initramfs-${pkgbase}.img" --kver "$kver"
+		dracut "${args[@]}" --add-confdir rescue  "/boot/initramfs-${pkgbase}-fallback.img" --kver "$kver"
+	fi
+done
+DIN
+
+    cat > "/usr/local/bin/dracut-remove.sh" << DRM
+#!/usr/bin/env bash
+
+while read -r line; do
+	if [[ "$line" == 'usr/lib/modules/'+([^/])'/pkgbase' ]]; then
+		read -r pkgbase < "/${line}"
+		rm -f "/boot/vmlinuz-${pkgbase}" "/boot/initramfs-${pkgbase}.img" "/boot/initramfs-${pkgbase}-fallback.img"
+	fi
+done
+DRM
+
+    cat > "/etc/pacman.d/hooks/90-dracut-install.hook" << DINH
+[Trigger]
+Type = Path
+Operation = Install
+Operation = Upgrade
+Target = usr/lib/modules/*/pkgbase
+
+[Action]
+Description = Updating linux initcpios (with dracut!)...
+When = PostTransaction
+Exec = /usr/local/bin/dracut-install.sh
+Depends = dracut
+NeedsTargets
+DINH
+
+    cat > "/etc/pacman.d/hooks/60-dracut-remove.hook" << DRMH
+[Trigger]
+Type = Path
+Operation = Remove
+Target = usr/lib/modules/*/pkgbase
+
+[Action]
+Description = Removing linux initcpios...
+When = PreTransaction
+Exec = /usr/local/bin/dracut-remove.sh
+NeedsTargets
+DRMH
+
+    cat > "/etc/dracut.conf.d/myflags.conf" << DFLAG
+hostonly="yes"
+compress="zstd"
+DFLAG
+
+    # -*- Dracut includes Btrfs support -*-
+    echo 'add_dracutmodules+=" btrfs "' > /etc/dracut.conf.d/btrfs.conf
+EOF
     pacstrap -K /mnt --needed "${base_packages[@]}"
 }
 
-# System configuration function
+# -*- System configuration function -*-
 function configure_system() {
     info "Configuring system..."
     
-    # Generate fstab
+    # -*- Generate fstab -*-
     genfstab -U /mnt >>/mnt/etc/fstab
 
-    # Chroot and configure
+    # -*- Chroot and configure -*-
     arch-chroot /mnt /bin/bash << EOF
     # Set timezone and synchronize hardware clock
-    # Links the specified timezone from zoneinfo to localtime
     ln -sf /usr/share/zoneinfo/${CONFIG[TIMEZONE]} "/etc/localtime"
+
     # Synchronizes system time with hardware clock, using UTC
     hwclock --systohc
     
-    # Configure system locale
-    # Add specified locale to locale generation file
+    # Configure system locale specified locale generation file
     echo "${CONFIG[LOCALE]} UTF-8" >> "/etc/locale.gen"
+
     # Generate locale configurations
     locale-gen
+
     # Set default language configuration
     echo "LANG=${CONFIG[LOCALE]}" > "/etc/locale.conf"
     
@@ -304,10 +366,8 @@ HOSTS
     echo "root:${CONFIG[PASSWORD]}" | chpasswd
 
     # Create new user account
-    # -m creates home directory
-    # -G adds user to wheel group (for sudo access)
-    # -s sets default shell to bash
     useradd -m -G wheel -s /bin/bash ${CONFIG[USERNAME]}
+
     # Set user password
     echo "${CONFIG[USERNAME]}:${CONFIG[PASSWORD]}" | chpasswd
     
@@ -316,83 +376,72 @@ HOSTS
     
     # Install GRUB bootloader for UEFI systems
     grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
+
+    # -*- Regenerate initramfs for all kernels -*-
+    dracut --regenerate-all
+
     # Generate GRUB configuration file
     grub-mkconfig -o /boot/grub/grub.cfg
-
-    # Regenerate initramfs for all kernels
-    mkinitcpio -P
 EOF
 }
 
 function coustom_configuration() {
     arch-chroot /mnt /bin/bash << EOF
-
-    # Create zram configuration file for systemd zram generator
+    # -*- Create zram configuration file for systemd zram generator -*-
     # This enables compressed RAM-based swap for improved system performance
     cat > "/usr/lib/systemd/zram-generator.conf" << ZRAM
 [zram0]
-compression-algorithm = zstd
+compression-algorithm = lz4
 zram-size = ram
 swap-priority = 100
 fs-type = swap
 ZRAM
 
-    # Enable parallel downloads in pacman to speed up package retrieval
+    # -*- Enable parallel downloads in pacman to speed up package retrieval -*-
     # This allows simultaneous downloads of multiple packages
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' "/etc/pacman.conf"
 
-    # Enable color output in pacman for better readability of package management logs
+    # -*- Enable color output in pacman for better readability of package management logs -*-
     sed -i 's/^#Color/Color/' "/etc/pacman.conf"
 
-    # Add two special configurations after the "Misc options" section:
+    # -*- Add two special configurations after the "Misc options" section: -*-
     # 1. DisableDownloadTimeout prevents pacman from timing out during slow downloads
     # 2. ILoveCandy adds a fun pacman animation during package downloads
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' "/etc/pacman.conf"
 
-    # Uncomment and enable the multilib repository
+    # -*- Uncomment and enable the multilib repository -*-
     # This allows installation of 32-bit packages on 64-bit systems
     # Useful for compatibility and running certain legacy applications
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' "/etc/pacman.conf"
 
-    # Configure Docker
+    # -*- Configure Docker -*-
     usermod -aG docker "${CONFIG[USERNAME]}"
 
-    # Set zsh as default shell for the user
+    # -*- Set zsh as default shell for the user -*-
     chsh -s /bin/zsh ${CONFIG[USERNAME]}
 
-    # Enable additional services
+    # -*- Enable additional services -*-
     systemctl enable \
     NetworkManager \
     bluetooth \
     thermald \
     fstrim.timer \
     gdm \
-    cups.service \
     dbus \
     lm_sensors \
-    apparmor \
-    fail2ban \
     avahi-daemon \
     docker \
-    earlyoom \
-    ananicy-cpp \
     systemd-timesyncd \
     snapper-timeline.timer snapper-cleanup.timer
 
-    # systemctl --user --now enable pipewire wireplumber
+    systemctl --user --now enable pipewire wireplumber
 
-    # # Enable UFW with basic rules
-    # ufw allow ssh
-    # ufw enable
-    # ufw allow 1714:1764/udp
-    # ufw allow 1714:1764/tcp
+    # -*- Configure Flatpak -*-
+    flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
-    # Configure Flatpak
-    # flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-
-    # Configure Snapper
-    snapper -c root create-config /
-    snapper -c home create-config /home
+    # -*- Configure Snapper -*-
+    # snapper -c root create-config /
+    # snapper -c home create-config /home
 EOF
 }
 
