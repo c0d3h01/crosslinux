@@ -32,7 +32,7 @@ function init_config() {
 
     CONFIG=(
         [DRIVE]="/dev/nvme0n1"
-        [HOSTNAME]="localhost"
+        [HOSTNAME]="archlinux"
         [USERNAME]="c0d3h01"
         [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
@@ -80,16 +80,16 @@ function setup_filesystems() {
 
     # -*- Unmount and remount with subvolumes -*-
     umount /mnt
-    mount -o "subvol=@,compress=zstd:1,discard=async" "${CONFIG[ROOT_PART]}" /mnt
+    mount -o "subvol=@,nodatacow" "${CONFIG[ROOT_PART]}" /mnt
 
     # -*- Create necessary directories -*- 
     mkdir -p /mnt/home /mnt/boot/efi /mnt/var/log /mnt/var/cache
 
     # -*- Mount EFI and home subvolumes -*-
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
-    mount -o "subvol=@home,compress=zstd:1,discard=async" "${CONFIG[ROOT_PART]}" /mnt/home
-    mount -o "subvol=@cache,compress=zstd:1,discard=async" "${CONFIG[ROOT_PART]}" /mnt/var/cache
-    mount -o "subvol=@log,compress=zstd:1,discard=async" "${CONFIG[ROOT_PART]}" /mnt/var/log
+    mount -o "subvol=@home,nodatacow" "${CONFIG[ROOT_PART]}" /mnt/home
+    mount -o "subvol=@cache,nodatacow" "${CONFIG[ROOT_PART]}" /mnt/var/cache
+    mount -o "subvol=@log,nodatacow" "${CONFIG[ROOT_PART]}" /mnt/var/log
 }
 
 # -*- Base system installation function -*-
@@ -206,7 +206,6 @@ function install_base_system() {
         reflector # Filter the latest Pacman mirror list.
         pacutils # Helper tools for libalpm
         neovim # Fork of Vim aiming to improve user experience, plugins, and GUIs
-        nano # Pico editor clone with enhancements
         fastfetch # A feature-rich and performance oriented neofetch like system information tool
         flatpak # Linux application sandboxing and distribution framework (formerly xdg-app)
         glances # CLI curses-based monitoring tool
@@ -386,11 +385,6 @@ IOSHED
     # -*- Configure Flatpak -*-
     flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 EOF
-
-    # -*- Configure Snapper -*-
-    pacman -Sy --noconfirm snapper
-    snapper -c root create-config /mnt/
-    snapper -c home create-config /mnt/home
 }
 
 function main() {
