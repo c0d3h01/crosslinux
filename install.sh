@@ -175,7 +175,6 @@ function install_base_system() {
         gnome-power-manager      # System power information and statistics
         gnome-screenshot         # Take pictures of your screen
         gnome-shell              # Next generation desktop shell
-        gnome-console            # A simple user-friendly terminal emulator
         gnome-themes-extra       # Extra Themes for GNOME Applications
         gnome-tweaks             # Graphical interface for advanced GNOME 3 settings (Tweak Tool)
         gnome-logs               # A log viewer for the systemd journal
@@ -186,64 +185,55 @@ function install_base_system() {
         gvfs-mtp                 # Virtual filesystem implementation for GIO - MTP backend (Android, media player)
         gvfs-nfs                 # Virtual filesystem implementation for GIO - NFS backend
         gvfs-smb                 # Virtual filesystem implementation for GIO - SMB/CIFS backend (Windows file sharing)
-        xdg-desktop-portal       # Desktop integration portals for sandboxed apps
         xdg-desktop-portal-gnome # Backend implementation for xdg-desktop-portal for the GNOME desktop environment
         xdg-user-dirs-gtk        # Creates user dirs and asks to relocalize them
 
         # -*- Fonts -*-
-        noto-fonts       # Google Noto TTF fonts
-        noto-fonts-cjk   # Google Noto CJK fonts
-        noto-fonts-emoji # Google Noto emoji fonts
-        ttf-fira-code    # Monospaced font with programming ligatures
-        ttf-dejavu       # Font family based on the Bitstream Vera Fonts with a wider range of characters
-        ttf-liberation   # Font family which aims at metric compatibility with Arial, Times New Roman, and Courier New
+        noto-fonts
+        noto-fonts-cjk
+        noto-fonts-emoji
+        ttf-fira-code
 
         # -*- Essential System Utilities -*-
-        kitty               # A modern, hackable, featureful, OpenGL-based terminal emulator
-        zram-generator      # Systemd unit generator for zram devices
-        thermald            # The Linux Thermal Daemon program from 01.org
-        git                 # the fast distributed version control system
-        reflector           # Filter the latest Pacman mirror list.
-        pacutils            # Helper tools for libalpm
-        neovim              # Fork of Vim aiming to improve user experience, plugins, and GUIs
-        fastfetch           # A feature-rich and performance oriented neofetch like system information tool
-        glances             # CLI curses-based monitoring tool
-        wget                # Network utility to retrieve files from the Web
-        curl                # command line tool and library for transferring data with URLs
-        sshpass             # Fool ssh into accepting an interactive password non-interactively
-        openssh             # SSH protocol implementation for remote login, command execution and file transfer
-        inxi                # Full featured CLI system information tool
-        zsh                 # A very advanced and programmable command interpreter (shell) for UNIX
-        cups                # OpenPrinting CUPS - daemon package
-        ccache              # Compiler cache that speeds up recompilation by caching previous compilations
-        acpid               # A daemon for delivering ACPI power management events with netlink support
-        meson               # High productivity build system
-        ibus                # Intelligent input bus for Linux/Unix
-        ibus-typing-booster # Predictive input method for the IBus platform
-        snapper             # A tool for managing BTRFS and LVM snapshots. It can create, diff and restore snapshots and provides timelined auto-snapping.
-        snap-pac            # Pacman hooks for snapper
-        grub-btrfs          # Include btrfs snapshots in GRUB boot options
-        xclip               # Command line interface to the X11 clipboard
+        kitty
+        zram-generator
+        git
+        reflector
+        pacutils
+        fastfetch
+        glances
+        wget
+        curl
+        sshpass
+        openssh
+        inxi
+        zsh
+        cups
+        snapper
+        snap-pac
+        grub-btrfs
+        xclip
+        neovim
 
         # -*- Development-tool -*-
-        gcc               # The GNU Compiler Collection - C and C++ frontends
-        cmake             # A cross-platform open-source make system
-        clang             # C language family frontend for LLVM
-        npm               # JavaScript package manager
-        nodejs            # Evented I/O for V8 javascript
-        docker            # Pack, ship and run any application as a lightweight container
-        docker-compose    # Fast, isolated development environments using Docker
-        jdk-openjdk       # OpenJDK Java development kit
-        jupyterlab        # JupyterLab computational environment
-        python            # The Python programming language
-        python-virtualenv # Virtual Python Environment builder
-        python-pip        # The PyPA recommended tool for installing Python packages
+        gcc
+        cmake
+        clang
+        npm
+        nodejs
+        docker
+        docker-compose
+        jdk-openjdk
+        jupyterlab
+        python
+        python-virtualenv
+        python-pip
 
         # -*- User Utilities -*-
-        firefox          # Fast, Private & Safe Web Browser
-        discord          # All-in-one voice and text chat for gamers
-        transmission-gtk # Fast, easy, and free BitTorrent client (GTK+ GUI)
-        telegram-desktop # Official Telegram Desktop client
+        firefox
+        discord
+        qbittorrent
+        telegram-desktop
     )
     pacstrap -K /mnt --needed "${base_packages[@]}"
 }
@@ -291,7 +281,7 @@ HOSTS
     echo "root:${CONFIG[PASSWORD]}" | chpasswd
 
     # Create new user account
-    useradd -m -G wheel, audio, video, docker -s /bin/bash ${CONFIG[USERNAME]}
+    useradd -m -G wheel -s /bin/bash ${CONFIG[USERNAME]}
 
     # Set user password
     echo "${CONFIG[USERNAME]}:${CONFIG[PASSWORD]}" | chpasswd
@@ -313,41 +303,19 @@ EOF
 function coustom_configuration() {
     arch-chroot /mnt /bin/bash <<EOF
     # -*- Create zram configuration file for systemd zram generator -*-
-    # This enables compressed RAM-based swap for improved system performance
     cat > "/usr/lib/systemd/zram-generator.conf" << ZRAM
 [zram0]
-compression-algorithm = zstd lz4
+compression-algorithm = lz4
 zram-size = ram
-swap-priority = 100
+swap-priority = 0
 fs-type = swap
 ZRAM
-
-    cat > "/usr/lib/udev/rules.d/30-zram.rules" << ZRULE
-    TEST!="/dev/zram0", GOTO="zram_end"
-SYSCTL{vm.swappiness}="150"
-LABEL="zram_end"
-ZRULE
-
-    cat > "/usr/lib/udev/rules.d/60-ioschedulers.rules" << IOSHED
-# HDD
-ACTION=="add|change", KERNEL=="sd[a-z]*", ATTR{queue/rotational}=="1", \
-    ATTR{queue/scheduler}="bfq"
-# SSD
-ACTION=="add|change", KERNEL=="sd[a-z]*|mmcblk[0-9]*", ATTR{queue/rotational}=="0", \
-    ATTR{queue/scheduler}="mq-deadline"
-# NVMe SSD
-ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rotational}=="0", \
-    ATTR{queue/scheduler}="none"
-IOSHED
 
     # Configure pacman with parallel downloads, color output, multilib repo, and extra options
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' "/etc/pacman.conf" 
     sed -i 's/^#Color/Color/' "/etc/pacman.conf"
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' "/etc/pacman.conf"
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' "/etc/pacman.conf"
-
-    # -*- Configure Docker -*-
-    usermod -aG docker "${CONFIG[USERNAME]}"
 
     # -*- Set zsh as default shell for the user -*-
     chsh -s /bin/zsh ${CONFIG[USERNAME]}
@@ -356,7 +324,6 @@ IOSHED
     systemctl enable \
     NetworkManager \
     bluetooth \
-    thermald \
     fstrim.timer \
     gdm \
     dbus \
@@ -385,10 +352,7 @@ function main() {
     read -p "Installation successful!, Unmount NOW? (y/n): " UNMOUNT
     if [[ $UNMOUNT =~ ^[Yy]$ ]]; then
         umount -R /mnt
-    else
-        {
-            arch-chroot /mnt
-        }
+    else { arch-chroot /mnt }
     fi
 }
 
