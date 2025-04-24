@@ -305,7 +305,7 @@ function coustom_configuration() {
     # -*- Create zram configuration file for systemd zram generator -*-
     cat > "/usr/lib/systemd/zram-generator.conf" << ZRAM
 [zram0]
-compression-algorithm = lz4
+compression-algorithm = zstd
 zram-size = ram
 swap-priority = 0
 fs-type = swap
