@@ -1,68 +1,72 @@
 # archinstall
 
-Professional, JSON-driven Advanced Arch Linux Installation Script
-
----
-
-## Overview
-
-**archinstall** is a modular Bash script designed to automate Arch Linux installation using a JSON config. It supports disk setup, Btrfs subvolumes, multi-user creation, system configuration, and more.  
-It is suitable for personal, professional, and reproducible deployments.
-
----
-
-## Directory Structure
-
-```
-.
-├── src/                  # Main scripts
-│   └── archinstall.sh
-├── config/             # Example configs
-│   └── user_config.json
-├── docs/                 # Documentation
-│   ├── architecture.md
-│   └── usage.md
-├── .github/
-│   └── workflows/
-│       └── checks.yml
-├── LICENSE
-├── README.md
-└── .gitignore
-```
-
----
-
-## Quick Start
-
-1. **Edit or copy** `config/user_config.json` to set your installation preferences.
-2. **Boot from Arch ISO**, and download the script and config:
-    ```bash
-    git clone https://github.com/youruser/archinstall.git
-    cd archinstall
-    sudo bash src/archinstall.sh config/user_config.json
-    ```
-3. **Review the log:** Output is saved to `archinstall.log`.
-4. **See `docs/usage.md`** for advanced options and troubleshooting.
-
----
+Automated Arch Linux installation script for quick and reproducible system setup.
 
 ## Features
 
-- JSON-based configuration for users, drive, locale, timezone, etc.
-- Auto/manual disk selection and full Btrfs setup
-- Multi-user creation with custom groups/shells
-- Modular, extensible Bash code
-- Logging and error handling
-- Easy to add new features (services, DEs, package sets)
+- Interactive drive selection with safety confirmations
+- Automatic partitioning and formatting (Btrfs + EFI)
+- Installs essential base packages and tools
+- Customizable via JSON config for hostname, timezone, users, etc.
+- User creation with group and shell selection
+- Automated basic system configuration (locale, hosts, etc.)
+- Enables basic services (NetworkManager, firewalld)
+- Logging of all actions
 
----
+## Usage
 
-## Contributing
+1. **Clone the repository:**
 
-PRs welcome! See `docs/architecture.md` for guidelines.
+   ```bash
+   git clone https://github.com/c0d3h01/archinstall.git
+   cd archinstall
+   ```
 
----
+2. **Customize your config:**
+
+   Edit `config/user_config.json` to match your preferred hostname, timezone, and user accounts.
+
+   Example:
+   ```json
+   {
+     "drive": "auto",
+     "hostname": "archbox",
+     "timezone": "Asia/Kolkata",
+     "locale": "en_IN.UTF-8",
+     "users": [
+       {
+         "name": "username",
+         "password": "your_password_here",
+         "groups": "wheel,docker",
+         "shell": "/bin/zsh"
+       }
+     ]
+   }
+   ```
+
+3. **Run the installer:**
+
+   ```bash
+   chmod +x ./src/archinstall.sh
+   sudo ./src/archinstall.sh config/user_config.json
+   ```
+
+   If `"drive": "auto"` is set, the script will prompt you to select a target disk.
+
+4. **Reboot after completion.**
+
+## Requirements
+
+- Arch Linux live environment
+- Internet connection
+- Script auto-installs required tools (`jq`, `sgdisk`, `btrfs-progs`, etc.)
+
+## Notes
+
+- **Warning:** This script will wipe the selected drive.
+- All actions are logged to `archinstall.log`.
+- Review and adjust config and script as needed for custom requirements.
 
 ## License
 
-MIT License
+MIT
