@@ -11,9 +11,12 @@ NC='\033[0m'
 
 LOGFILE="archinstall.log"
 
-log()    { echo -e "${BLUE}[INFO]${NC} $*" | tee -a "$LOGFILE"; }
-ok()     { echo -e "${GREEN}[OK]${NC} $*"  | tee -a "$LOGFILE"; }
-fail()   { echo -e "${RED}[ERROR]${NC} $*" | tee -a "$LOGFILE"; exit 1; }
+log() { echo -e "${BLUE}[INFO]${NC} $*" | tee -a "$LOGFILE"; }
+ok() { echo -e "${GREEN}[OK]${NC} $*" | tee -a "$LOGFILE"; }
+fail() {
+    echo -e "${RED}[ERROR]${NC} $*" | tee -a "$LOGFILE"
+    exit 1
+}
 
 require_tools() {
     local missing_tools=()
@@ -38,7 +41,7 @@ CONFIG_JSON=""
 load_config() {
     CONFIG_JSON=$(cat "${1:?Missing config file!}")
     for key in drive hostname users timezone locale; do
-        jq -e ".${key}" <<< "$CONFIG_JSON" >/dev/null || fail "Config missing: $key"
+        jq -e ".${key}" <<<"$CONFIG_JSON" >/dev/null || fail "Config missing: $key"
     done
 }
 
@@ -51,15 +54,15 @@ choose_drive() {
 
     log "Available drives:"
     for i in "${!drives[@]}"; do
-        echo "$((i+1)). ${drives[$i]}"
+        echo "$((i + 1)). ${drives[$i]}"
     done
 
     read -rp "Choose drive to install (default: 1): " idx
     idx=${idx:-1}
-    if ! [[ "$idx" =~ ^[0-9]+$ ]] || (( idx < 1 || idx > ${#drives[@]} )); then
+    if ! [[ "$idx" =~ ^[0-9]+$ ]] || ((idx < 1 || idx > ${#drives[@]})); then
         fail "Invalid selection."
     fi
-    DRIVE=$(echo "${drives[$((idx-1))]}" | awk '{print $1}')
+    DRIVE=$(echo "${drives[$((idx - 1))]}" | awk '{print $1}')
     log "Selected drive: $DRIVE"
 
     # Confirm before wiping
@@ -72,28 +75,46 @@ setup_disk() {
     wipefs -af "$DRIVE"
     sgdisk --zap-all "$DRIVE"
     sgdisk --clear "$DRIVE"
-    sgdisk --new=1:0:+1G --typecode=1:ef00 --change-name=1:"EFI" \
-           --new=2:0:0 --typecode=2:8300 --change-name=2:"ROOT" "$DRIVE"
-    partprobe "$DRIVE"
-    # Correctly handle partition naming for different device types
-    if [[ "$DRIVE" =~ [0-9]$ ]]; then
-        EFI_PART="${DRIVE}p1"
-        ROOT_PART="${DRIVE}p2"
+    if [[ -d /sys/firmware/efi/efivars ]]; then
+        # UEFI partition scheme
+        sgdisk --new=1:0:+1G --typecode=1:ef00 --change-name=1:"EFI" \
+            --new=2:0:0 --typecode=2:8300 --change-name=2:"ROOT" "$DRIVE"
+        partprobe "$DRIVE"
+        if [[ "$DRIVE" =~ [0-9]$ ]]; then
+            EFI_PART="${DRIVE}p1"
+            ROOT_PART="${DRIVE}p2"
+        else
+            EFI_PART="${DRIVE}1"
+            ROOT_PART="${DRIVE}2"
+        fi
     else
-        EFI_PART="${DRIVE}1"
-        ROOT_PART="${DRIVE}2"
+        # BIOS+GPT: need BIOS boot partition (EF02)
+        sgdisk --new=1:0:+2M --typecode=1:ef02 --change-name=1:"BIOSBOOT" \
+            --new=2:0:+1G --typecode=2:ef00 --change-name=2:"EFI" \
+            --new=3:0:0 --typecode=3:8300 --change-name=3:"ROOT" "$DRIVE"
+        partprobe "$DRIVE"
+        if [[ "$DRIVE" =~ [0-9]$ ]]; then
+            BIOSBOOT_PART="${DRIVE}p1"
+            EFI_PART="${DRIVE}p2"
+            ROOT_PART="${DRIVE}p3"
+        else
+            BIOSBOOT_PART="${DRIVE}1"
+            EFI_PART="${DRIVE}2"
+            ROOT_PART="${DRIVE}3"
+        fi
     fi
 }
 
 setup_filesystems() {
-    mkfs.fat -F32 "$EFI_PART"
+    # Only format/mount EFI if it exists
+    [[ -n "${EFI_PART:-}" ]] && mkfs.fat -F32 "$EFI_PART"
     mkfs.btrfs -L "ROOT" -n 16k -f "$ROOT_PART"
     mount "$ROOT_PART" /mnt
     for sub in @ @home @log @cache; do btrfs subvolume create /mnt/$sub; done
     umount /mnt
     mount -o "subvol=@,compress=zstd:3" "$ROOT_PART" /mnt
     mkdir -p /mnt/{home,boot/efi,var/log,var/cache}
-    mount "$EFI_PART" /mnt/boot/efi
+    [[ -n "${EFI_PART:-}" ]] && mount "$EFI_PART" /mnt/boot/efi
     mount -o "subvol=@home,compress=zstd:3" "$ROOT_PART" /mnt/home
     mount -o "subvol=@cache,compress=zstd:3" "$ROOT_PART" /mnt/var/cache
     mount -o "subvol=@log,compress=zstd:1" "$ROOT_PART" /mnt/var/log
@@ -111,9 +132,9 @@ install_base_system() {
 configure_system() {
     genfstab -U /mnt >>/mnt/etc/fstab
     local TIMEZONE LOCALE HOSTNAME
-    TIMEZONE=$(jq -r .timezone <<< "$CONFIG_JSON")
-    LOCALE=$(jq -r .locale <<< "$CONFIG_JSON")
-    HOSTNAME=$(jq -r .hostname <<< "$CONFIG_JSON")
+    TIMEZONE=$(jq -r .timezone <<<"$CONFIG_JSON")
+    LOCALE=$(jq -r .locale <<<"$CONFIG_JSON")
+    HOSTNAME=$(jq -r .hostname <<<"$CONFIG_JSON")
     arch-chroot /mnt /bin/bash <<EOF
 set -e
 ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime
@@ -133,13 +154,13 @@ EOF
 
 create_users() {
     local users_count
-    users_count=$(jq '.users | length' <<< "$CONFIG_JSON")
-    for ((i=0; i<users_count; i++)); do
+    users_count=$(jq '.users | length' <<<"$CONFIG_JSON")
+    for ((i = 0; i < users_count; i++)); do
         local username password groups shell
-        username=$(jq -r ".users[$i].name" <<< "$CONFIG_JSON")
-        password=$(jq -r ".users[$i].password" <<< "$CONFIG_JSON")
-        groups=$(jq -r ".users[$i].groups // \"wheel\"" <<< "$CONFIG_JSON")
-        shell=$(jq -r ".users[$i].shell // \"/bin/bash\"" <<< "$CONFIG_JSON")
+        username=$(jq -r ".users[$i].name" <<<"$CONFIG_JSON")
+        password=$(jq -r ".users[$i].password" <<<"$CONFIG_JSON")
+        groups=$(jq -r ".users[$i].groups // \"wheel\"" <<<"$CONFIG_JSON")
+        shell=$(jq -r ".users[$i].shell // \"/bin/bash\"" <<<"$CONFIG_JSON")
 
         # Ensure all groups exist before user creation
         for grp in $(echo "$groups" | tr ',' ' '); do
@@ -181,7 +202,7 @@ main() {
     [[ -f "$config_file" ]] || fail "Config file '$config_file' not found."
     load_config "$config_file"
 
-    DRIVE=$(jq -r .drive <<< "$CONFIG_JSON")
+    DRIVE=$(jq -r .drive <<<"$CONFIG_JSON")
     [[ "$DRIVE" == "auto" ]] && choose_drive
 
     setup_disk
