@@ -43,14 +43,20 @@ load_config() {
 }
 
 choose_drive() {
-    mapfile -t drives < <(lsblk -dno NAME,SIZE | awk '{print "/dev/$1" "($2)"}')
-    if [[ -z "${drives[*]}" ]]; then fail "No drives found!"; fi
+    mapfile -t drives < <(lsblk -dno NAME,TYPE,SIZE,MODEL | awk '$2=="disk"{printf "/dev/%s (%s, %s)\n", $1, $3, $4}')
+    if [[ ${#drives[@]} -eq 0 ]]; then
+        fail "No drives found!"
+    fi
 
     log "Available drives:"
-    for i in "${!drives[@]}"; do echo "$((i+1)). ${drives[$i]}"; done
-    read -r -p "Choose drive to install (default: 1): " idx
+    for i in "${!drives[@]}"; do
+        echo "$((i+1)). ${drives[$i]}"
+    done
+
+    read -rp "Choose drive to install (default: 1): " idx
     idx=${idx:-1}
     DRIVE=$(echo "${drives[$((idx-1))]}" | awk '{print $1}')
+    log "Selected drive: $DRIVE"
 }
 
 setup_disk() {
@@ -61,8 +67,14 @@ setup_disk() {
     sgdisk --new=1:0:+1G --typecode=1:ef00 --change-name=1:"EFI" \
            --new=2:0:0 --typecode=2:8300 --change-name=2:"ROOT" "$DRIVE"
     partprobe "$DRIVE"
-    EFI_PART="${DRIVE}p1"
-    ROOT_PART="${DRIVE}p2"
+    # Correctly handle partition naming for different device types
+    if [[ "$DRIVE" =~ [0-9]$ ]]; then
+        EFI_PART="${DRIVE}p1"
+        ROOT_PART="${DRIVE}p2"
+    else
+        EFI_PART="${DRIVE}1"
+        ROOT_PART="${DRIVE}2"
+    fi
 }
 
 setup_filesystems() {
@@ -75,7 +87,7 @@ setup_filesystems() {
     mkdir -p /mnt/{home,boot/efi,var/log,var/cache}
     mount "$EFI_PART" /mnt/boot/efi
     mount -o "subvol=@home,compress=zstd:3" "$ROOT_PART" /mnt/home
-    mount -o "subvol=@cache,compress=zstd3:" "$ROOT_PART" /mnt/var/cache
+    mount -o "subvol=@cache,compress=zstd:3" "$ROOT_PART" /mnt/var/cache
     mount -o "subvol=@log,compress=zstd:1" "$ROOT_PART" /mnt/var/log
 }
 
