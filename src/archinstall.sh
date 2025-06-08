@@ -158,7 +158,13 @@ EOF
 }
 
 install_bootloader() {
-    arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
+    if [[ -d /sys/firmware/efi/efivars ]]; then
+        # UEFI system
+        arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
+    else
+        # BIOS/Legacy system
+        arch-chroot /mnt grub-install --target=i386-pc "$DRIVE"
+    fi
     arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
     arch-chroot /mnt mkinitcpio -P
 }
