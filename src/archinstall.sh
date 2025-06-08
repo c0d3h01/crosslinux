@@ -71,12 +71,12 @@ setup_filesystems() {
     mount "$ROOT_PART" /mnt
     for sub in @ @home @log @cache; do btrfs subvolume create /mnt/$sub; done
     umount /mnt
-    mount -o "subvol=@,nodatacow" "$ROOT_PART" /mnt
+    mount -o "subvol=@,compress=zstd:3" "$ROOT_PART" /mnt
     mkdir -p /mnt/{home,boot/efi,var/log,var/cache}
     mount "$EFI_PART" /mnt/boot/efi
-    mount -o "subvol=@home,nodatacow" "$ROOT_PART" /mnt/home
-    mount -o "subvol=@cache,nodatacow" "$ROOT_PART" /mnt/var/cache
-    mount -o "subvol=@log,nodatacow" "$ROOT_PART" /mnt/var/log
+    mount -o "subvol=@home,compress=zstd:3" "$ROOT_PART" /mnt/home
+    mount -o "subvol=@cache,compress=zstd3:" "$ROOT_PART" /mnt/var/cache
+    mount -o "subvol=@log,compress=zstd:1" "$ROOT_PART" /mnt/var/log
 }
 
 install_base_system() {
