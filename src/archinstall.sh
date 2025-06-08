@@ -43,6 +43,7 @@ load_config() {
 }
 
 choose_drive() {
+    # Only show real disks, not loop/rom, with size and model for clarity
     mapfile -t drives < <(lsblk -dno NAME,TYPE,SIZE,MODEL | awk '$2=="disk"{printf "/dev/%s (%s, %s)\n", $1, $3, $4}')
     if [[ ${#drives[@]} -eq 0 ]]; then
         fail "No drives found!"
@@ -55,8 +56,15 @@ choose_drive() {
 
     read -rp "Choose drive to install (default: 1): " idx
     idx=${idx:-1}
+    if ! [[ "$idx" =~ ^[0-9]+$ ]] || (( idx < 1 || idx > ${#drives[@]} )); then
+        fail "Invalid selection."
+    fi
     DRIVE=$(echo "${drives[$((idx-1))]}" | awk '{print $1}')
     log "Selected drive: $DRIVE"
+
+    # Confirm before wiping
+    read -rp "WARNING: All data on $DRIVE will be lost. Are you sure? [y/N]: " confirm
+    [[ "${confirm,,}" == "y" ]] || fail "Aborted by user."
 }
 
 setup_disk() {
@@ -132,11 +140,20 @@ create_users() {
         password=$(jq -r ".users[$i].password" <<< "$CONFIG_JSON")
         groups=$(jq -r ".users[$i].groups // \"wheel\"" <<< "$CONFIG_JSON")
         shell=$(jq -r ".users[$i].shell // \"/bin/bash\"" <<< "$CONFIG_JSON")
+
+        # Ensure all groups exist before user creation
+        for grp in $(echo "$groups" | tr ',' ' '); do
+            arch-chroot /mnt getent group "$grp" >/dev/null || arch-chroot /mnt groupadd "$grp"
+        done
+
+        # Create user and set password
         arch-chroot /mnt /bin/bash <<EOF
 useradd -m -G $groups -s $shell $username
 echo "$username:$password" | chpasswd
 EOF
     done
+
+    # Enable sudo for wheel group
     arch-chroot /mnt sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 }
 
