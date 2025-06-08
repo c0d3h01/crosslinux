@@ -94,14 +94,13 @@ setup_disk() {
             --new=3:0:0 --typecode=3:8300 --change-name=3:"ROOT" "$DRIVE"
         partprobe "$DRIVE"
         if [[ "$DRIVE" =~ [0-9]$ ]]; then
-            BIOSBOOT_PART="${DRIVE}p1"
             EFI_PART="${DRIVE}p2"
             ROOT_PART="${DRIVE}p3"
         else
-            BIOSBOOT_PART="${DRIVE}1"
             EFI_PART="${DRIVE}2"
             ROOT_PART="${DRIVE}3"
         fi
+        # BIOS boot partition is not used elsewhere, so we do not assign a variable for it
     fi
 }
 
