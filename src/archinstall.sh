@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2207,SC2162
 
 set -euo pipefail
 
@@ -15,9 +16,22 @@ ok()     { echo -e "${GREEN}[OK]${NC} $*"  | tee -a "$LOGFILE"; }
 fail()   { echo -e "${RED}[ERROR]${NC} $*" | tee -a "$LOGFILE"; exit 1; }
 
 require_tools() {
+    local missing_tools=()
     for tool in jq sgdisk btrfs mkfs.fat pacstrap arch-chroot reflector; do
-        command -v "$tool" >/dev/null 2>&1 || fail "$tool is required but not installed."
+        if ! command -v "$tool" >/dev/null 2>&1; then
+            missing_tools+=("$tool")
+        fi
     done
+
+    if [[ ${#missing_tools[@]} -ne 0 ]]; then
+        log "The following required tools are missing: ${missing_tools[*]}"
+        log "Attempting to install missing tools with pacman..."
+        sudo pacman -Sy --noconfirm "${missing_tools[@]}" || fail "Failed to install required tools: ${missing_tools[*]}"
+        # Re-check if installation succeeded, fail if not
+        for tool in "${missing_tools[@]}"; do
+            command -v "$tool" >/dev/null 2>&1 || fail "$tool is required but could not be installed automatically."
+        done
+    fi
 }
 
 CONFIG_JSON=""
@@ -29,12 +43,12 @@ load_config() {
 }
 
 choose_drive() {
-    local drives=($(lsblk -dno NAME,SIZE | awk '{print "/dev/"$1" ("$2")"}'))
+    mapfile -t drives < <(lsblk -dno NAME,SIZE | awk '{print "/dev/$1" "($2)"}')
     if [[ -z "${drives[*]}" ]]; then fail "No drives found!"; fi
 
     log "Available drives:"
     for i in "${!drives[@]}"; do echo "$((i+1)). ${drives[$i]}"; done
-    read -p "Choose drive to install (default: 1): " idx
+    read -r -p "Choose drive to install (default: 1): " idx
     idx=${idx:-1}
     DRIVE=$(echo "${drives[$((idx-1))]}" | awk '{print $1}')
 }
@@ -122,7 +136,7 @@ install_bootloader() {
 
 enable_services() {
     local services=(NetworkManager firewalld)
-    for s in "${services[@]}"; do arch-chroot /mnt systemctl enable $s; done
+    for s in "${services[@]}"; do arch-chroot /mnt systemctl enable "$s"; done
 }
 
 main() {
