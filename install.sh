@@ -32,7 +32,7 @@ function init_config() {
 
     CONFIG=(
         [DRIVE]="/dev/nvme0n1"
-        [HOSTNAME]="archlinux"
+        [HOSTNAME]="eva"
         [USERNAME]="c0d3h01"
         [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
@@ -62,6 +62,8 @@ function setup_disk() {
 
     # -*- Reload the partition table -*-
     partprobe "${CONFIG[DRIVE]}"
+
+    sleep 2  # Wait for partition table to be recognized
 }
 
 function setup_filesystems() {
@@ -217,10 +219,14 @@ function install_base_system() {
 
         # -*- Development-tool -*-
         gcc
+        glib
+        gdb
         cmake
         clang
         npm
         nodejs
+        bun
+        yarn
         docker
         docker-compose
         jdk-openjdk
@@ -272,9 +278,9 @@ function configure_system() {
     # Sets localhost and system-specific hostname mappings
     cat > "/etc/hosts" << HOSTS
 # Standard localhost entries
-127.0.0.1       localhost
-::1             localhost
-127.0.1.1       ${CONFIG[HOSTNAME]}.localdomain ${CONFIG[HOSTNAME]}
+127.0.0.1 localhost
+::1 localhost
+127.0.0.2 ${CONFIG[HOSTNAME]}
 HOSTS
 
     # Set root password using chpasswd (securely)
@@ -305,9 +311,9 @@ function coustom_configuration() {
     # -*- Create zram configuration file for systemd zram generator -*-
     cat > "/usr/lib/systemd/zram-generator.conf" << ZRAM
 [zram0]
-compression-algorithm = zstd
-zram-size = ram
-swap-priority = 0
+compression-algorithm = lzo-rle
+zram-size = ram * 2
+swap-priority = 100
 fs-type = swap
 ZRAM
 
