@@ -11,9 +11,10 @@ set -exuo pipefail
 
 # -*- Source external modules -*-
 source ./modules/setup_base_system.sh
-source ./modules/setup_coustom_conf.sh
+source ./modules/setup_configuration.sh
 source ./modules/setup_disk.sh
 source ./modules/setup_filesystem.sh
+source ./modules/setup_optimization.sh
 source ./modules/setup_system.sh
 
 # -*- Color codes -*-

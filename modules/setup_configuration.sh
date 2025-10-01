@@ -3,7 +3,7 @@
 function coustom_configuration() {
     arch-chroot /mnt /bin/bash <<EOF
     # -*- Create zram configuration file for systemd zram generator -*-
-    cat > "/usr/lib/systemd/zram-generator.conf" << ZRAM
+    cat > "/etc/systemd/zram-generator.conf" << ZRAM
 [zram0]
 compression-algorithm = zstd
 zram-size = ram * 2

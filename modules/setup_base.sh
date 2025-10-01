@@ -144,7 +144,6 @@ function install_base_system() {
         # -*- User Utilities -*-
         firefox
         discord
-        qbittorrent
         telegram-desktop
     )
     pacstrap -K /mnt --needed "${base_packages[@]}"
