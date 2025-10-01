@@ -70,6 +70,7 @@ function main() {
     install_base_system
     configure_system
     coustom_configuration
+    setup_perf
 
     # Final message and unmount prompt
     read -p "Installation successful!, Unmount NOW? (y/n): " UNMOUNT
