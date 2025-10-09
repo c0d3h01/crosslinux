@@ -11,6 +11,13 @@ swap-priority = 1000
 fs-type = swap
 ZRAM
 
+    cat > "/etc/sysctl.d/99-vm-zram-parameters.conf" << SYSCTL
+vm.swappiness = 180
+vm.watermark_boost_factor = 0
+vm.watermark_scale_factor = 125
+vm.page-cluster = 0
+SYSCTL
+
     # Configure pacman with parallel downloads, color output, multilib repo, and extra options
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' "/etc/pacman.conf" 
     sed -i 's/^#Color/Color/' "/etc/pacman.conf"
